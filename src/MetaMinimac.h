@@ -9,7 +9,8 @@
 #include <map>
 #include <algorithm>
 #include <iterator>
-
+#include <math.h>
+#include "MyVariables.h"
 
 using namespace std;
 
@@ -39,15 +40,19 @@ class MetaMinimac
         int Window,Overlap;
         string finChromosome;
         double SplitLimit;
+    vector<variant> CommonTypedVariantList;
+    vector<string> SortedCommonGenoList;
+    vector<int> FinalCommonTypedBP;
 
-        int numHaplotypes;
+
+    int numHaplotypes;
         int NoUnionVariants;
         vector<int> FinalBP;
         vector<int> NoVariantsByCategory;
         vector<vector<int> > ListofVariantsByCategory;
         vector<int> GenoVariantsAllStudies;
         int TotalNoGenoVariantsAllStudies;
-
+        myUserVariables ThisVariable;
 
 
         int NoChunks;
@@ -61,14 +66,20 @@ class MetaMinimac
         double ErrorSumSq,ErrorSumSqPerChunk;
 
 
+    bool CheckSampleNameCompatibility();
 
         vector<int> StudyOneVariants;
         vector<int> StudyTwoVariants;
         vector<int> StudyBothVariants;
 //        vector<int> StudyBothVariants;
 
+        MetaMinimac()
+        {
+
+        }
 
 
+        String AnalyzeExperiment(myUserVariables &ThisVariables);
         MetaMinimac(String InputFile,String Outfile,bool Gzip,
                      String format,int window, int overlap, double Limit, String method)
         {
@@ -99,10 +110,14 @@ void PrintLSQEstimates(int ID);
         void        CopyParameters                      (HaplotypeSet &HapData,String InPrefix);
         void        CopyParameters                      (HaplotypeSet &FromHapData,HaplotypeSet &ToHapData);
 
+    bool FindCommonGenotypedVariants();
+    bool ParseInputVCFFiles();
+    bool GetSummaryInputVCFFiles();
 void GetLeastSquareEstimates(int Sample, ThisChunk &MyChunk);
 void GetLogOddsLeastSquareEstimates(int Sample, ThisChunk &MyChunk);
 
 
+    bool ReadEmpVariantAndChunk();
 
 void UpdateFlankFractions();
 

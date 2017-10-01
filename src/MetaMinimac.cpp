@@ -2,6 +2,7 @@
 #include "HaplotypeSet.h"
 #include <math.h>
 #include "Minimizers.h"
+#include "MyVariables.h"
 using BT::Simplex;
 
 
@@ -10,7 +11,41 @@ double rosenbrock(vector<double> x)
   return -pow(x[0],1/x[0]);
 }
 
+String MetaMinimac::AnalyzeExperiment(myUserVariables &ThisVariables)
+{
+    ThisVariable=ThisVariables;
 
+    if(!ThisVariable.CheckValidity()) return "Command.Line.Error";
+
+
+
+    cout<<" ------------------------------------------------------------------------------"<<endl;
+    cout<<"                             INPUT VCF DOSAGE FILE                             "<<endl;
+    cout<<" ------------------------------------------------------------------------------"<<endl;
+
+
+	if (!ParseInputVCFFiles())
+	{
+		cout << "\n Program Exiting ... \n\n";
+        return "Command.Line.Error";
+    }
+
+    if (!CheckSampleNameCompatibility())
+    {
+        cout << "\n Program Exiting ... \n\n";
+        return "Input.VCF.Dose.Error";
+    }
+
+    if (!ReadEmpVariantAndChunk())
+    {
+        cout << "\n Program Exiting ... \n\n";
+        return "Input.VCF.Dose.Error";
+    }
+
+
+
+    return "Success";
+}
 
 void MetaMinimac::PrintVCFHeader()
 {
@@ -778,20 +813,35 @@ void MetaMinimac::UpdateFlankFractions()
 }
 
 
-bool MetaMinimac::ReadInputFiles()
+
+bool MetaMinimac::ReadEmpVariantAndChunk()
+{
+    cout<<"\n Gathering information for chunking ... "<<endl;
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        InputData[i].LoadEmpVariantList();
+        cout<<" No Genotyped Sites = "<<InputData[i].noTypedMarkers<<endl;
+    }
+
+    cout<<" Successful !!! "<<endl;
+
+
+    FindCommonGenotypedVariants();
+    return true;
+}
+
+
+
+
+bool MetaMinimac::ParseInputVCFFiles()
 {
 
-
-
     InPrefixList.clear();
-
     size_t pos = 0;
-    std::string delimiter(":") ;
+    std::string delimiter(ThisVariable.FileDelimiter) ;
     std::string token;
     int Count=0;
-    string tempName=inputFile.c_str();
-    string temptempName=tempName;
-    cout<<endl;
+    string tempName=ThisVariable.inputFiles.c_str();
     while ((pos = tempName.find(delimiter)) != std::string::npos)
     {
         token = tempName.substr(0, pos);
@@ -817,8 +867,43 @@ bool MetaMinimac::ReadInputFiles()
         cout<<" Program aborting ... "<<endl<<endl;
         return false;
     }
+    if(NoInPrefix>4)
+    {
+        cout<<"\n ERROR ! Must have less than 5 studies for meta-imputation to work !!! "<<endl;
+        cout<<" Program aborting ... "<<endl<<endl;
+        return false;
+    }
+
+    return true;
+}
 
 
+bool MetaMinimac::CheckSampleNameCompatibility()
+{
+    cout<<"\n Checking Sample Compatibility across files ... "<<endl;
+
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        if(!InputData[i].LoadSampleNames(InPrefixList[i].c_str()))
+            return false;
+        if(i>0)
+            if(!InputData[i].CheckSampleConsistency(InputData[i-1].numSamples,
+                                                    InputData[i-1].individualName,
+                                                    InputData[i-1].SampleNoHaplotypes,
+                                                    InputData[i-1].DoseFileName,
+                                                    InputData[i].DoseFileName))
+                return false;
+
+    }
+
+    cout<<" Successful !!! "<<endl;
+    return true;
+}
+
+
+
+bool MetaMinimac::ReadInputFiles()
+{
     cout<<"\n ----------------------------------"<<endl;
     cout<<"  READING SAMPLE AND VARIANT NAMES "<<endl;
     cout<<" ----------------------------------"<<endl<<endl;
@@ -826,9 +911,15 @@ bool MetaMinimac::ReadInputFiles()
 
     for(int i=0;i<NoInPrefix;i++)
     {
-        CopyParameters(InputData[i],InPrefixList[i]);
-        if(!InputData[i].GetSummary(InPrefixList[i].c_str()))
+        //CopyParameters(InputData[i],InPrefixList[i]);
+        if(!InputData[i].LoadSampleNames(InPrefixList[i].c_str()))
             return false;
+//        if(i>0)
+//            if(!InputData[i].CheckSampleConsistency(InputData[i-1].numSamples,
+//                                                       InputData[i-1].individualName,
+//                                                       InputData[i-1].SampleNoHaplotypes))
+//                return false;
+
     }
 
     cout<<"\n --------------------------------"<<endl;
@@ -913,6 +1004,62 @@ bool MetaMinimac::ReadInputFiles()
 
     return true;
 }
+
+
+
+
+bool MetaMinimac::FindCommonGenotypedVariants()
+{
+    std::map<string, int > HashUnionVariantMap;
+    std::unordered_set<string> CommonGenotypeVariantNameList;
+
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        for(int j=0;j<InputData[i].noTypedMarkers;j++)
+        {
+            variant *thisVariant=&InputData[i].TypedVariantList[j];
+            HashUnionVariantMap[thisVariant->name]++;
+        }
+    }
+
+    std::map<string, int >::iterator itStudy;
+
+    for (itStudy=HashUnionVariantMap.begin(); itStudy!=HashUnionVariantMap.end(); ++itStudy)
+    {
+        if(itStudy->second==NoInPrefix)
+        {
+            CommonGenotypeVariantNameList.insert(itStudy->first);
+        }
+
+    }
+    cout<<CommonGenotypeVariantNameList.size()<<endl;
+
+
+
+    InputData[0].SortCommonGenotypeList(CommonGenotypeVariantNameList, SortedCommonGenoList);
+
+    for(int i=1; i<NoInPrefix; i++)
+        InputData[i].ReadBasedOnSortCommonGenotypeList(SortedCommonGenoList);
+
+    int h=0;
+//
+//
+//
+//    std::cout << " Total Union Number of Variants                      : " << OutputData.numMarkers << endl;
+//
+//    int MultipleSitesCount=0;
+//
+//    for(int i=0;i<NoInPrefix;i++)
+//    {
+//        std::cout << " Total Number of Variants in "<<i+1<<" Studies               : "
+//                  << NoVariantsByCategory[i] << endl;
+//        if(i>0)
+//            MultipleSitesCount+=NoVariantsByCategory[i];
+//    }
+//    std::cout << " Total Number of Variants in more than one study     : " << MultipleSitesCount<< endl <<endl;
+
+}
+
 
 
 

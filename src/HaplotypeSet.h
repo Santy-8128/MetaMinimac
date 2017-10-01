@@ -8,7 +8,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <list>
-
+#include "MyVariables.h"
 
 using namespace std;
 
@@ -101,10 +101,6 @@ class ThisChunk
 
 class HaplotypeSet
 {
-//    private:
-//
-//
-//         *myVcfFileStream;
 
 
 	public:
@@ -114,9 +110,22 @@ class HaplotypeSet
         String InfilePrefix;
         String InfileName;
 
+        string DoseFileName;
+        string EmpDoseFileName;
+        vector<string> markerName;
+        vector<string> individualName;
+    vector<int> SampleNoHaplotypes;
+    vector<int> CummulativeSampleNoHaplotypes;
 
 
-        vector<vector<double> > LooDosage;
+
+    vector<variant> VariantList;
+    vector<variant> TypedVariantList;
+    vector<variant> AllVariantList;
+    int noTypedMarkers, noAllMarkers;
+
+
+    vector<vector<double> > LooDosage;
         vector<vector<double> > HapDosage;
         vector<vector<double> > TypedGT;
         vector<vector<double> > MetaDosage;
@@ -126,7 +135,6 @@ class HaplotypeSet
         double SplitLimit;
 
 
-        vector<variant> VariantList;
         vector<double> EstRsq;
         int BufferSize;
         String outFile;
@@ -148,9 +156,19 @@ class HaplotypeSet
 
 
 
+    void LoadEmpVariantList();
+    void LoadVariantList(string inFile);
+
+    bool CheckSampleConsistency(int tempNoSamples,
+                                              vector<string> &tempindividualName,
+                                              vector<int> tempSampleNoHaplotypes,
+                                string File1, string File2);
 
 
-
+    void ReadBasedOnSortCommonGenotypeList(vector<string> &SortedCommonGenoList);
+    void SortCommonGenotypeList(
+                                              std::unordered_set<string> &CommonGenotypeVariantNameList,
+                                              vector<string> &SortedCommonGenoList);
 
 
 
@@ -179,11 +197,7 @@ class HaplotypeSet
         bool PseudoAutosomal;
         bool AllMaleTarget;
         String removeSam;
-        vector<double>      Recom,Error;
-        vector<string> markerName;
-		vector<string> individualName,familyName;
-		vector<int> SampleNoHaplotypes;
-		vector<char> refAlleleList,major, minor;
+      	vector<char> refAlleleList,major, minor;
 		vector<bool> missing, MarkerIndices;
 
 		bool allowMissing, vcfType,m3vcfxType,machType;
@@ -210,10 +224,14 @@ class HaplotypeSet
 
         }
 
+    bool GetSummary(string prefix, myUserVariables &ThisVariable);
+    bool CheckSuffixFile(string prefix, const char* suffix, string &FinalName);
+
         bool        UpdateFlankLength(int index,vector<double> tempRecom);
         bool        ProcessRecombination(int index,vector<double> tempRecom);
         bool        LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype,int &numReadRecords);
 
+        bool GetSampleInformation(string filename);
 
 
 
@@ -222,7 +240,7 @@ class HaplotypeSet
         bool        LoadDosageChunkData(ThisChunk &MyChunk,VcfFileReader &ThisVcfFileStream,
                                              VcfRecord &ThisRecord);
 
-        bool        LoadLooVariant(VcfRecordGenotype &ThisGenotype,int &loonumReadRecords);
+        bool        LoadLooVariant(VcfRecordGenotype &ThisGenotype,int loonumReadRecords);
 
         bool        InitializeDosageChunkData(VcfFileReader &ThisVcfFileStream,
                                              VcfRecord &ThisRecord);

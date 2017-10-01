@@ -149,41 +149,56 @@ bool HaplotypeSet::LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype,int &numRe
     int Counter=0;
     for (int i = 0; i<(numSamples); i++)
     {
-        string temp=*ThisGenotype.getString("PDS",i);
+        string temp=*ThisGenotype.getString("LDS",i);
         char *end_str;
 
-        char *pch = strtok_r ((char*)temp.c_str(),"|", &end_str);
-        HapDosage[numReadRecords][Counter++]=atof(pch);
+        if(SampleNoHaplotypes[i]==2) {
+            char *pch = strtok_r((char *) temp.c_str(), "|", &end_str);
+            HapDosage[numReadRecords][Counter++] = atof(pch);
 
-        pch = strtok_r (NULL, "\t", &end_str);
-        HapDosage[numReadRecords][Counter++]=atof(pch);
+            pch = strtok_r(NULL, "\t", &end_str);
+            HapDosage[numReadRecords][Counter++] = atof(pch);
+        }
+        else
+        {
+            HapDosage[numReadRecords][Counter++] = atof(temp.c_str());
+        }
 
     }
 }
 
 
 
-bool HaplotypeSet::LoadLooVariant(VcfRecordGenotype &ThisGenotype,int &loonumReadRecords)
+bool HaplotypeSet::LoadLooVariant(VcfRecordGenotype &ThisGenotype,int loonumReadRecords)
 {
     int looCounter=0;
     for (int i = 0; i<(numSamples); i++)
     {
         string temp=*ThisGenotype.getString("LDS",i);
-        char *end_str;
-        char *pch = strtok_r ((char*)temp.c_str(),"|", &end_str);
-        LooDosage[looCounter][loonumReadRecords]=atof(pch);
-        pch = strtok_r (NULL, "\t", &end_str);
-        LooDosage[looCounter+1][loonumReadRecords]=atof(pch);
+        if(SampleNoHaplotypes[i]==2)
+        {
+            char *end_str;
+            char *pch = strtok_r((char *) temp.c_str(), "|", &end_str);
+            LooDosage[looCounter][loonumReadRecords] = atof(pch);
+            pch = strtok_r(NULL, "\t", &end_str);
+            LooDosage[looCounter + 1][loonumReadRecords] = atof(pch);
 
 
-        temp=*ThisGenotype.getString("GT0",i);
-        char *end_str1;
-        char *pch1 = strtok_r ((char*)temp.c_str(),"|", &end_str1);
-        TypedGT[looCounter++][loonumReadRecords]=atof(pch1);
-        pch1 = strtok_r (NULL, "\t", &end_str1);
-        TypedGT[looCounter++][loonumReadRecords]=atof(pch1);
+            temp = *ThisGenotype.getString("GT", i);
+            char *end_str1;
+            char *pch1 = strtok_r((char *) temp.c_str(), "|", &end_str1);
+            TypedGT[looCounter++][loonumReadRecords] = atof(pch1);
+            pch1 = strtok_r(NULL, "\t", &end_str1);
+            TypedGT[looCounter++][loonumReadRecords] = atof(pch1);
+        }
+        else
+        {
+            LooDosage[looCounter + 1][loonumReadRecords] = atof(temp.c_str());
+            temp = *ThisGenotype.getString("GT", i);
+            TypedGT[looCounter++][loonumReadRecords] = atof(temp.c_str());
+
+        }
     }
-    loonumReadRecords++;
 }
 
 
@@ -269,7 +284,7 @@ bool HaplotypeSet::LoadDosageData(string prefix)
     }
 
 
-    int numSamplesRead = 0,markerCount=0,TypedMarkerCount=0, totmarkerCount=0,NumGP=0,NumDS=0,NumGT=0;
+    int numSamples = 0,markerCount=0,TypedMarkerCount=0, totmarkerCount=0,NumGP=0,NumDS=0,NumGT=0;
     if (!inFile.open(filename.c_str(), header))
 	{
 		cout << "\n Program could NOT open file : " << filename << endl<<endl;
@@ -277,7 +292,7 @@ bool HaplotypeSet::LoadDosageData(string prefix)
 	}
 
     inFile.setSiteOnly(false);
-	numSamplesRead = header.getNumSamples();
+	numSamples = header.getNumSamples();
     char * pch_split,* pch_split_split,* pch_split3;
     char * pch;
     char *end_str1,*end_str3;
@@ -695,9 +710,9 @@ bool HaplotypeSet::LoadDosageData(string prefix)
         std::cout << "\n           Please use info file from same imputation run !!! " << endl;
         return false;
     }
-//	std::cout << "\n Number of Variants imported from GP (Genotype Prob)      : " << NumGP/numSamplesRead;
-//	std::cout << "\n Number of Variants imported from DS (Dosage)             : " << NumDS/numSamplesRead;
-//	std::cout << "\n Number of Variants imported from GT (Genotype)           : " << NumGT/numSamplesRead<<endl<<endl;
+//	std::cout << "\n Number of Variants imported from GP (Genotype Prob)      : " << NumGP/numSamples;
+//	std::cout << "\n Number of Variants imported from DS (Dosage)             : " << NumDS/numSamples;
+//	std::cout << "\n Number of Variants imported from GT (Genotype)           : " << NumGT/numSamples<<endl<<endl;
 
 
     if((NumGP+NumDS)==0)
@@ -716,130 +731,337 @@ bool HaplotypeSet::LoadDosageData(string prefix)
 }
 
 
-bool HaplotypeSet::LoadSampleNames(string prefix)
+bool HaplotypeSet::CheckSuffixFile(string prefix, const char* suffix, string &FinalName)
 {
-
-	VcfFileReader inFile;
-	VcfHeader header;
-	VcfRecord record;
-    individualName.clear();
-
-    string filename;
-
-    if(doesExistFile(prefix+".dose.vcf"))
-        filename=prefix+".dose.vcf";
-    else if(doesExistFile(prefix+".dose.vcf.gz"))
-        filename=prefix+".dose.vcf.gz";
+    if(doesExistFile(prefix+"."+suffix+".vcf"))
+        FinalName=prefix+"."+suffix+".vcf";
+    else if(doesExistFile(prefix+"."+suffix+".vcf.gz"))
+        FinalName=prefix+"."+suffix+".vcf.gz";
     else
     {
-        cout<<"\n No VCF file found ("<<prefix<<".dose.vcf or "<<prefix+".dose.vcf.gz) "<<endl;
+        cout<<"\n No VCF file found ("<<prefix<<"."<<suffix<<"dose.vcf or "<<prefix+"."<<suffix<<".vcf.gz) "<<endl;
         cout<<" Please check input file prefix ["<< prefix <<"] properly ... "<<endl;
-//        cout<<" Program aborting ... "<<endl;
         return false;
     }
+    return true;
+}
 
 
-    if (!inFile.open(filename.c_str(), header))
-	{
-		cout << "\n Program could NOT open file : " << filename << endl<<endl;
-		return false;
-	}
-	int numSamplesRead = 0;
-	numSamplesRead = header.getNumSamples();
-    numSamples=numSamplesRead;
-    numHaplotypes=2*numSamples;
-
-    if(numSamplesRead==0)
+bool HaplotypeSet::CheckSampleConsistency(int tempNoSamples,
+                                          vector<string> &tempindividualName,
+                                          vector<int> tempSampleNoHaplotypes,
+                                          string File1, string File2)
+{
+    if(tempNoSamples!=numSamples)
     {
-        std::cout << "\n Number of Samples read from VCF File    : " << numSamplesRead << endl;
-        std::cout << "\n ERROR !!! "<<endl;
-        cout << "\n NO samples found in VCF File !! \n Please Check Input File !!!  "<< endl;
+        cout<<"\n ERROR !!! "<<endl;
+        cout<< " "<<File1<<" has "<<tempNoSamples<<" samples, but "<< File2<<" has "<<numSamples<<" samples !!!"<<endl;
         return false;
     }
+    for(int i=0; i<numSamples; i++)
+    {
+        if(tempindividualName[i]!=individualName[i])
+        {
+            cout<<"\n  ERROR !!! "<<endl;
+            cout<< " "<<File1<<" and "<< File2<<" have different samples orders !!! "<<endl;
+            return false;
+        }
+        if(tempSampleNoHaplotypes[i]!=SampleNoHaplotypes[i])
+        {
+            cout<<"\n  ERROR !!! "<<endl;
+            cout<< " "<<DoseFileName<<" and "<< EmpDoseFileName<<" have different ploidy for sample ID ["<< individualName[i]<<"]  !!! "<<endl;
+            return false;
+        }
+    }
+    return true;
+}
 
-    for (int i = 0; i < numSamplesRead; i++)
-	{
-        individualName.push_back(header.getSampleName(i));
-	}
-	inFile.setSiteOnly(true);
+
+
+
+void HaplotypeSet::LoadEmpVariantList()
+{
+    LoadVariantList(EmpDoseFileName);
+    TypedVariantList=VariantList;
+    noTypedMarkers=numMarkers;
+}
+
+
+
+void HaplotypeSet::LoadVariantList(string FileName)
+{
+    VcfFileReader inFile;
+    VcfHeader header;
+    VcfRecord record;
+    inFile.open(FileName.c_str(), header);
+    inFile.setSiteOnly(true);
     VariantList.clear();
 
     int bp,numReadRecords=0;
     string cno,id,refAllele,altAllele,prevID="",currID;
 
-
     while (inFile.readRecord(record))
 	{
-
 		++numReadRecords;
 
-
-		cno=record.getChromStr();
-        bp=record.get1BasedPosition();
-        id=record.getIDStr();
-        altAllele = record.getAltStr();
-		refAllele = record.getRefStr();
-
-        variant tempVariant(id,cno,bp);
-        tempVariant.assignRefAlt(refAllele,altAllele);
-
-
-        VcfRecordFilter& ThisFilter=record.getFilter();
-        bool typed=false;
-
-        for(int i=0;i<ThisFilter.getNumFilters();i++)
-        {
-            string Filter=ThisFilter.getString(i);
-
-            if(Filter=="GENOTYPED")
-            {
-                TypedSites.push_back(numReadRecords-1);
-                TypedSitesIndicator.push_back(true);
-                typed=true;
-            }
-        }
-        if(!typed)
-            TypedSitesIndicator.push_back(false);
-
-
-        stringstream strs1,strs2;
-        strs1<<(cno);
-        strs2<<(bp);
-        currID=(string)strs1.str()+"_"+(string)strs2.str()+
-                refAllele+altAllele;
-
-        if(prevID==currID)
-        {
-            cout << "\n Error !!! Duplicate Variant found chr:"
-                <<cno<<":"<<bp<<" with identical REF = "<<refAllele
-                 <<" and ALT = "<<altAllele <<".";
-        altAllele=altAllele+altAllele;
-tempVariant.assignRefAlt(refAllele,altAllele);
-
-
-//            cout << " Program Aborting ... "<<endl;
-//            return false;
-        }
-        else
-            prevID=currID;
-
-
+        variant tempVariant;
+        tempVariant.chr=record.getChromStr();
+        tempVariant.bp=record.get1BasedPosition();
+        tempVariant.name=record.getIDStr();
+        tempVariant.altAlleleString = record.getAltStr();
+        tempVariant.refAlleleString = record.getRefStr();
         VariantList.push_back(tempVariant);
-
 	}
-    NoTypedSites=(int)TypedSites.size();
+
     numMarkers=VariantList.size();
     inFile.close();
-    InterAllTypedSitesIndicator.resize(numMarkers,false);
-    InterAllTypedSitesReverseMap.clear();
+}
 
-    cout << " Number of Samples in VCF File      : " << numSamplesRead << endl;
-    cout << " Number of Markers in VCF File      : " << numMarkers << endl;
-    cout << " Number of Genotyped Markers        : " << NoTypedSites << endl<<endl;
+void HaplotypeSet::SortCommonGenotypeList(std::unordered_set<string> &CommonGenotypeVariantNameList,
+                                          vector<string> &SortedCommonGenoList)
+
+{
+    VcfFileReader inFile;
+    VcfHeader header;
+    VcfRecord record;
+    VcfRecordGenotype *recordGeno;
+    inFile.open(EmpDoseFileName.c_str(), header);
+    inFile.setSiteOnly(false);
+    SortedCommonGenoList.clear();
+    int bp,numReadRecords=0;
+    string cno,id,refAllele,altAllele,prevID="",currID;
+
+    LooDosage.clear();
+    TypedGT.clear();
+    LooDosage.resize(numHaplotypes);
+    TypedGT.resize(numHaplotypes);
+    for(int i=0; i<numHaplotypes; i++)
+    {
+        LooDosage[i].resize(CommonGenotypeVariantNameList.size());
+        TypedGT[i].resize(CommonGenotypeVariantNameList.size());
+    }
+
+    int numComRecord = 0;
+    while (inFile.readRecord(record))
+    {
+       ++numReadRecords;
+
+        if(CommonGenotypeVariantNameList.find(record.getIDStr())!=CommonGenotypeVariantNameList.end())
+        {
+            recordGeno=&record.getGenotypeInfo();
+            LoadLooVariant(*recordGeno, numComRecord);
+
+            SortedCommonGenoList.push_back(record.getIDStr());
+
+            numComRecord++;
+        }
+    }
+
+    if(SortedCommonGenoList.size()!=CommonGenotypeVariantNameList.size())
+    {
+        cout<<" ERROR CODE 4219: Please contact author with this code to help with bug fixing ..."<<endl;
+        abort();
+    }
+    inFile.close();
+}
+
+void HaplotypeSet::ReadBasedOnSortCommonGenotypeList(vector<string> &SortedCommonGenoList)
+
+{
+    VcfFileReader inFile;
+    VcfHeader header;
+    VcfRecord record;
+    VcfRecordGenotype *recordGeno;
+    inFile.open(EmpDoseFileName.c_str(), header);
+    inFile.setSiteOnly(false);
+    int bp,numReadRecords=0;
+    string cno,id,refAllele,altAllele,prevID="",currID;
+
+    LooDosage.clear();
+    TypedGT.clear();
+    LooDosage.resize(numHaplotypes);
+    TypedGT.resize(numHaplotypes);
+    for(int i=0; i<numHaplotypes; i++)
+    {
+        LooDosage[i].resize(SortedCommonGenoList.size());
+        TypedGT[i].resize(SortedCommonGenoList.size());
+    }
+    int SortIndex = 0;
+    int numComRecord = 0;
+    while (inFile.readRecord(record))
+    {
+        ++numReadRecords;
+
+        if(SortedCommonGenoList[SortIndex]==record.getIDStr())
+        {
+            recordGeno=&record.getGenotypeInfo();
+            LoadLooVariant(*recordGeno, numComRecord);
+            numComRecord++;
+            SortIndex++;
+        }
+    }
+    if(SortedCommonGenoList.size()!=SortIndex)
+    {
+        cout<<" ERROR CODE 2819: Please contact author with this code to help with bug fixing ..."<<endl;
+        abort();
+    }
+
+    inFile.close();
+}
+
+bool HaplotypeSet::LoadSampleNames(string prefix)
+{
+    InfilePrefix.Copy(prefix.c_str());
+    if(!CheckSuffixFile(prefix,"dose", DoseFileName)) return false;
+    if(!CheckSuffixFile(prefix,"empiricalDose", EmpDoseFileName)) return false;
+
+    GetSampleInformation(DoseFileName);
+    int tempNoSamples=numSamples;
+    vector<string> tempindividualName=individualName;
+    vector<int> tempSampleNoHaplotypes=SampleNoHaplotypes;
+    GetSampleInformation(EmpDoseFileName);
+    if(!CheckSampleConsistency(tempNoSamples,tempindividualName,tempSampleNoHaplotypes,DoseFileName,EmpDoseFileName)) return false;
+
+    return true;
+//
+//
+//
+//    inFile.setSiteOnly(true);
+//    VariantList.clear();
+//
+//    int bp,numReadRecords=0;
+//    string cno,id,refAllele,altAllele,prevID="",currID;
+//
+//
+//    while (inFile.readRecord(record))
+//	{
+//
+//		++numReadRecords;
+//
+//
+//		cno=record.getChromStr();
+//        bp=record.get1BasedPosition();
+//        id=record.getIDStr();
+//        altAllele = record.getAltStr();
+//		refAllele = record.getRefStr();
+//
+//        variant tempVariant(id,cno,bp);
+//        tempVariant.assignRefAlt(refAllele,altAllele);
+//
+//
+//        VcfRecordFilter& ThisFilter=record.getFilter();
+//        bool typed=false;
+//
+//        for(int i=0;i<ThisFilter.getNumFilters();i++)
+//        {
+//            string Filter=ThisFilter.getString(i);
+//
+//            if(Filter=="GENOTYPED")
+//            {
+//                TypedSites.push_back(numReadRecords-1);
+//                TypedSitesIndicator.push_back(true);
+//                typed=true;
+//            }
+//        }
+//        if(!typed)
+//            TypedSitesIndicator.push_back(false);
+//
+//
+//        stringstream strs1,strs2;
+//        strs1<<(cno);
+//        strs2<<(bp);
+//        currID=(string)strs1.str()+"_"+(string)strs2.str()+
+//                refAllele+altAllele;
+//
+//        if(prevID==currID)
+//        {
+//            cout << "\n Error !!! Duplicate Variant found chr:"
+//                <<cno<<":"<<bp<<" with identical REF = "<<refAllele
+//                 <<" and ALT = "<<altAllele <<".";
+//        altAllele=altAllele+altAllele;
+//tempVariant.assignRefAlt(refAllele,altAllele);
+//
+//
+////            cout << " Program Aborting ... "<<endl;
+////            return false;
+//        }
+//        else
+//            prevID=currID;
+//
+//
+//        VariantList.push_back(tempVariant);
+//
+//	}
+//    NoTypedSites=(int)TypedSites.size();
+//    numMarkers=VariantList.size();
+//    inFile.close();
+//    InterAllTypedSitesIndicator.resize(numMarkers,false);
+//    InterAllTypedSitesReverseMap.clear();
+//
+//    cout << " Number of Samples in VCF File      : " << numSamples << endl;
+//    cout << " Number of Markers in VCF File      : " << numMarkers << endl;
+//    cout << " Number of Genotyped Markers        : " << NoTypedSites << endl<<endl;
+//
+//    return true;
+
+}
+
+
+bool HaplotypeSet::GetSampleInformation(string filename)
+{
+    VcfFileReader inFile;
+    VcfHeader header;
+    VcfRecord record;
+    individualName.clear();
+
+    if (!inFile.open(filename.c_str(), header))
+    {
+        cout << "\n Program could NOT open file : " << filename << endl<<endl;
+        return false;
+    }
+    numSamples = header.getNumSamples();
+    if(numSamples==0)
+    {
+        std::cout << "\n Number of Samples read from VCF File    : " << numSamples << endl;
+        std::cout << "\n ERROR !!! "<<endl;
+        cout << "\n NO samples found in VCF File !! \n Please Check Input File !!!  "<< endl;
+        return false;
+    }
+    individualName.resize(numSamples);
+    CummulativeSampleNoHaplotypes.resize(numSamples);
+    SampleNoHaplotypes.resize(numSamples);
+
+    for (int i = 0; i < numSamples; i++)
+    {
+        individualName[i]=header.getSampleName(i);
+    }
+
+    inFile.setSiteOnly(false);
+    inFile.readRecord(record);
+    int tempHapCount=0;
+    for (int i = 0; i<(numSamples); i++)
+    {
+        if(record.getNumGTs(i)==0)
+        {
+            std::cout << "\n ERROR !!! \n Empty Value for Individual : " << individualName[i] << " at First Marker  " << endl;
+            std::cout << " Most probably a corrupted VCF file. Please check input VCF file !!! " << endl;
+            cout << "\n Program Exiting ... \n\n";
+            return false;
+        }
+        else
+        {
+            CummulativeSampleNoHaplotypes[i]=tempHapCount;
+            SampleNoHaplotypes[i]=(record.getNumGTs(i));
+            tempHapCount+=SampleNoHaplotypes[i];
+        }
+    }
+    inFile.close();
+    numHaplotypes=tempHapCount;
 
     return true;
 
 }
+
 
 bool HaplotypeSet::LoadInfoFile(string prefix)
 {
@@ -1206,7 +1428,7 @@ bool HaplotypeSet::LoadRecomSpectrum(string prefix)
 
 
 
-bool HaplotypeSet::GetSummary(string prefix)
+bool HaplotypeSet::GetSummary(string prefix, myUserVariables &ThisVariable)
 {
 
     cout<<  " File Prefix                        : "<<prefix<<endl;
@@ -1758,9 +1980,9 @@ bool HaplotypeSet::doesExistFile(string filename)
 //        std::cout << "\n           Please use info file from same imputation run !!! " << endl;
 //        return false;
 //    }
-////	std::cout << "\n Number of Variants imported from GP (Genotype Prob)      : " << NumGP/numSamplesRead;
-////	std::cout << "\n Number of Variants imported from DS (Dosage)             : " << NumDS/numSamplesRead;
-////	std::cout << "\n Number of Variants imported from GT (Genotype)           : " << NumGT/numSamplesRead<<endl<<endl;
+////	std::cout << "\n Number of Variants imported from GP (Genotype Prob)      : " << NumGP/numSamples;
+////	std::cout << "\n Number of Variants imported from DS (Dosage)             : " << NumDS/numSamples;
+////	std::cout << "\n Number of Variants imported from GT (Genotype)           : " << NumGT/numSamples<<endl<<endl;
 //
 //
 //    if((NumGP+NumDS)==0)
