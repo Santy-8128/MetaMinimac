@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-project(minimac4 VERSION 1.0.0)
+project(metaMinimac VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 11)
 execute_process(COMMAND date OUTPUT_VARIABLE DATE OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -17,29 +17,17 @@ endif()
 
 find_package(ZLIB REQUIRED)
 find_library(STATGEN_LIBRARY StatGen)
-add_executable(minimac4
-        src/Analysis.cpp
-        src/Analysis.h
-        src/AnalysisChunks.cpp
-        src/DosageData.cpp
-        src/DosageData.h
+add_executable(metaMinimac
         src/HaplotypeSet.cpp
         src/HaplotypeSet.h
-        src/Imputation.cpp
-        src/Imputation.h
-        src/ImputationStatistics.cpp
-        src/ImputationStatistics.h
+        src/MetaMinimac.cpp
+        src/MetaMinimac.h
+        src/Minimizers.h
         src/Main.cpp
-        src/MarkovModel.cpp
-        src/MarkovModel.h
-        src/MarkovParameters.cpp
-        src/MarkovParameters.h
+        src/simplex.h
         src/MyVariables.h
-        src/Unique.cpp
-        src/Unique.h
-        src/Estimation.cpp
-        src/Estimation.h)
+        )
 
-target_link_libraries(minimac4 ${STATGEN_LIBRARY} ${ZLIB_LIBRARIES})
+target_link_libraries(metaMinimac ${STATGEN_LIBRARY} ${ZLIB_LIBRARIES})
 
-install(TARGETS minimac4 RUNTIME DESTINATION bin)
+install(TARGETS metaMinimac RUNTIME DESTINATION bin)
