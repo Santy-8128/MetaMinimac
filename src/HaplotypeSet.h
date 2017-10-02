@@ -85,9 +85,10 @@ class ThisChunk
 	public:
 	    int ChunkNo;
 	    int NoVariants;
-	    int Start,End;
+    int StartBp,EndBp;
+    int Start,End;
 	    int StartIndex,EndIndex;
-	    int StartWithWindow,EndWithWindow;
+	    int StartWithWindowIndex,EndWithWindowIndex;
         int NoGenoAllStudies;
         vector< vector<int> > ThisChunkInterAllTypedSitesReverseMap;
 
@@ -168,7 +169,8 @@ class HaplotypeSet
     void ReadBasedOnSortCommonGenotypeList(vector<string> &SortedCommonGenoList);
     void SortCommonGenotypeList(
                                               std::unordered_set<string> &CommonGenotypeVariantNameList,
-                                              vector<string> &SortedCommonGenoList);
+                                              vector<string> &SortedCommonGenoList,
+                                              vector<variant> &CommonTypedVariantList);
 
 
 

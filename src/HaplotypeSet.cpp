@@ -818,7 +818,8 @@ void HaplotypeSet::LoadVariantList(string FileName)
 }
 
 void HaplotypeSet::SortCommonGenotypeList(std::unordered_set<string> &CommonGenotypeVariantNameList,
-                                          vector<string> &SortedCommonGenoList)
+                                          vector<string> &SortedCommonGenoList,
+                                          vector<variant> &CommonTypedVariantList)
 
 {
     VcfFileReader inFile;
@@ -831,6 +832,8 @@ void HaplotypeSet::SortCommonGenotypeList(std::unordered_set<string> &CommonGeno
     int bp,numReadRecords=0;
     string cno,id,refAllele,altAllele,prevID="",currID;
 
+    CommonTypedVariantList.clear();
+    CommonTypedVariantList.resize(CommonGenotypeVariantNameList.size());
     LooDosage.clear();
     TypedGT.clear();
     LooDosage.resize(numHaplotypes);
@@ -848,6 +851,14 @@ void HaplotypeSet::SortCommonGenotypeList(std::unordered_set<string> &CommonGeno
 
         if(CommonGenotypeVariantNameList.find(record.getIDStr())!=CommonGenotypeVariantNameList.end())
         {
+            variant &tempVariant=CommonTypedVariantList[numComRecord];
+            tempVariant.chr=record.getChromStr();
+            tempVariant.bp=record.get1BasedPosition();
+            tempVariant.name=record.getIDStr();
+            tempVariant.altAlleleString = record.getAltStr();
+            tempVariant.refAlleleString = record.getRefStr();
+            VariantList.push_back(tempVariant);
+
             recordGeno=&record.getGenotypeInfo();
             LoadLooVariant(*recordGeno, numComRecord);
 

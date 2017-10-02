@@ -16,6 +16,7 @@ class myUserVariables
         int window,overlap;
         double switchLimit;
         String FileDelimiter;
+        double chunkLength;
 
         bool  gzip, nobgzip;
         bool   help, params, log;
@@ -37,7 +38,7 @@ class myUserVariables
         help = false;
         params = false;
         log=false;
-
+        chunkLength=10;
     };
     bool CheckValidity()
     {

@@ -72,6 +72,8 @@ class LogOddsModel
         int NoParams;
         int SampleID;
         vector<vector<double>* > LooDosage;
+        vector<vector<double> > LooDosageVal;
+        vector<double> ChipGTVal;
         vector<vector<int*> > FlankLength;
         vector<vector<double*> > FlankFrac;
         vector<vector<double*> > FlankLogOddFrac;
@@ -83,8 +85,10 @@ class LogOddsModel
 
     public:
 
-        double initialize(int SampleId, vector<HaplotypeSet> &InputData,
-                                    MetaMinimac *const ThisStudy,ThisChunk &MyChunk);
+    double metaInitialize(int SampleId, vector<HaplotypeSet> &InputData,
+                      MetaMinimac *const ThisStudy,ThisChunk &MyChunk);
+    double initialize(int SampleId, vector<HaplotypeSet> &InputData,
+                      MetaMinimac *const ThisStudy,ThisChunk &MyChunk);
         double  operator()(vector<double> x);
 
 
@@ -339,6 +343,40 @@ double LogOddsModel::initialize(int SampleId, vector<HaplotypeSet> &InputData,
 }
 
 
+
+double LogOddsModel::metaInitialize(int SampleId, vector<HaplotypeSet> &InputData,
+                                MetaMinimac *const ThisStudy,ThisChunk &MyChunk)
+{
+
+    NoStudies=InputData.size();
+
+
+    NoParams=NoStudies;
+    NoDimensions=NoStudies;
+
+    NoMarkers=MyChunk.NoGenoAllStudies;
+    SampleID=SampleId;
+
+
+    LooDosageVal.resize(NoStudies);
+    for(int i=0;i<NoStudies;i++)
+    {
+        LooDosageVal[i].resize(NoMarkers);
+
+        for(int j=0; j<NoMarkers; j++)
+        {
+            assert(MyChunk.StartWithWindowIndex+j<ThisStudy->NoCommonGenoVariants);
+            LooDosageVal[i][j]=InputData[i].LooDosage[SampleID][MyChunk.StartWithWindowIndex+j];
+        }
+    }
+
+    for(int j=0; j<NoMarkers; j++)
+    {
+        assert(MyChunk.StartWithWindowIndex+j<ThisStudy->NoCommonGenoVariants);
+        ChipGTVal[j]=InputData[0].TypedGT[SampleID][MyChunk.StartWithWindowIndex+j];
+    }
+
+}
 
 double LogOddsModel::operator()(vector<double> x)
 {

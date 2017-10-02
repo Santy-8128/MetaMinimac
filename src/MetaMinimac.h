@@ -47,6 +47,7 @@ class MetaMinimac
 
     int numHaplotypes;
         int NoUnionVariants;
+    int NoCommonGenoVariants;
         vector<int> FinalBP;
         vector<int> NoVariantsByCategory;
         vector<vector<int> > ListofVariantsByCategory;
@@ -58,6 +59,7 @@ class MetaMinimac
         int NoChunks;
         vector<ThisChunk> ChunkList;
 
+        void GetNumChunks();
 
 
         vector<vector<double> > LSQEstimates;
@@ -79,6 +81,7 @@ class MetaMinimac
         }
 
 
+    void GetMetaImpEstimates(int Sample, ThisChunk &MyChunk);
         String AnalyzeExperiment(myUserVariables &ThisVariables);
         MetaMinimac(String InputFile,String Outfile,bool Gzip,
                      String format,int window, int overlap, double Limit, String method)

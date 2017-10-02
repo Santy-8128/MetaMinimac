@@ -5,12 +5,6 @@
 #include "MyVariables.h"
 using BT::Simplex;
 
-
-double rosenbrock(vector<double> x)
-{
-  return -pow(x[0],1/x[0]);
-}
-
 String MetaMinimac::AnalyzeExperiment(myUserVariables &ThisVariables)
 {
     ThisVariable=ThisVariables;
@@ -18,15 +12,14 @@ String MetaMinimac::AnalyzeExperiment(myUserVariables &ThisVariables)
     if(!ThisVariable.CheckValidity()) return "Command.Line.Error";
 
 
-
     cout<<" ------------------------------------------------------------------------------"<<endl;
     cout<<"                             INPUT VCF DOSAGE FILE                             "<<endl;
     cout<<" ------------------------------------------------------------------------------"<<endl;
 
 
-	if (!ParseInputVCFFiles())
-	{
-		cout << "\n Program Exiting ... \n\n";
+    if (!ParseInputVCFFiles())
+    {
+        cout << "\n Program Exiting ... \n\n";
         return "Command.Line.Error";
     }
 
@@ -44,8 +37,507 @@ String MetaMinimac::AnalyzeExperiment(myUserVariables &ThisVariables)
 
 
 
+    for(int i=0; i<NoChunks; i++)
+    {
+
+        for(int j=0;j<InputData[0].numHaplotypes; j++)
+            GetMetaImpEstimates(j,ChunkList[i]);
+    }
+
     return "Success";
 }
+
+
+void MetaMinimac::GetMetaImpEstimates(int Sample, ThisChunk &MyChunk)
+{
+
+    LogOddsModel ThisSampleAnalysis;
+    ThisSampleAnalysis.metaInitialize(Sample,InputData,this,MyChunk);
+
+    int h=0;
+
+//    else if(Method=="B")
+//    {
+//
+//
+//        vector<double> init(NoInPrefix, 0.0);
+////        LSQEstimates[Sample].resize(NoInPrefix+1);
+//
+//
+//        LSQEstimates[Sample]=Simplex(ThisSampleAnalysis, init);
+//        ErrorPerSamplePerChunk[Sample]=ThisSampleAnalysis(LSQEstimates[Sample]);
+//        ErrorPerSample[Sample]+=ErrorPerSamplePerChunk[Sample];
+//        ErrorSumSqPerChunk+=ErrorPerSamplePerChunk[Sample];
+////        logTransform(MiniMizer,LSQEstimates[Sample],NoInPrefix);
+//
+//    }
+
+//    LeastSquareError ThisSampleAnalysis;
+//    ThisSampleAnalysis.initialize(Sample,InputData,this,MyChunk);
+//
+//    vector<double> init(NoInPrefix, 0.0);
+//    //        cout<<"\n WELL \n";
+//    LSQEstimates[Sample].resize(NoInPrefix);
+//    PositiveTransform(Simplex(ThisSampleAnalysis, init),LSQEstimates[Sample],NoInPrefix);
+//
+
+
+}
+
+
+bool MetaMinimac::ReadEmpVariantAndChunk()
+{
+    cout<<"\n Gathering information for chunking ... "<<endl;
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        InputData[i].LoadEmpVariantList();
+        cout<<" No Genotyped Sites = "<<InputData[i].noTypedMarkers<<endl;
+    }
+
+    cout<<" Successful !!! "<<endl;
+
+
+    FindCommonGenotypedVariants();
+
+    GetNumChunks();
+    CreateChunks();
+
+    return true;
+}
+
+
+void MetaMinimac::GetNumChunks() {
+
+    int NoMarkers = CommonTypedVariantList.size();
+    int StartPos = CommonTypedVariantList[0].bp;
+    int EndPos = CommonTypedVariantList[NoMarkers - 1].bp;
+
+    NoChunks = ((int) (EndPos - StartPos) / (int) (1000000 * ThisVariable.chunkLength));
+
+    if (NoChunks == 0)
+        NoChunks = 1;
+
+    return;
+}
+
+
+
+
+
+bool MetaMinimac::ParseInputVCFFiles()
+{
+
+    InPrefixList.clear();
+    size_t pos = 0;
+    std::string delimiter(ThisVariable.FileDelimiter) ;
+    std::string token;
+    int Count=0;
+    string tempName=ThisVariable.inputFiles.c_str();
+    while ((pos = tempName.find(delimiter)) != std::string::npos)
+    {
+        token = tempName.substr(0, pos);
+        cout<<  " Study "<<Count+1<<" Prefix                     : "<<token<<endl;
+
+        InPrefixList.push_back(token.c_str());
+        tempName.erase(0, pos + delimiter.length());
+        Count++;
+    }
+    cout<<  " Study "<<Count+1<<" Prefix                     : "<<tempName<<endl;
+    InPrefixList.push_back(tempName.c_str());
+
+
+    NoInPrefix=(int)InPrefixList.size();
+    InputData.clear();
+    InputData.resize(NoInPrefix);
+
+    cout<<  " Number of Studies to Meta-Impute   : "<<NoInPrefix<<endl;
+
+    if(NoInPrefix<2)
+    {
+        cout<<"\n ERROR ! Must have at least 2 studies for meta-imputation to work !!! "<<endl;
+        cout<<" Program aborting ... "<<endl<<endl;
+        return false;
+    }
+    if(NoInPrefix>4)
+    {
+        cout<<"\n ERROR ! Must have less than 5 studies for meta-imputation to work !!! "<<endl;
+        cout<<" Program aborting ... "<<endl<<endl;
+        return false;
+    }
+
+    return true;
+}
+
+
+bool MetaMinimac::CheckSampleNameCompatibility()
+{
+    cout<<"\n Checking Sample Compatibility across files ... "<<endl;
+
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        if(!InputData[i].LoadSampleNames(InPrefixList[i].c_str()))
+            return false;
+        if(i>0)
+            if(!InputData[i].CheckSampleConsistency(InputData[i-1].numSamples,
+                                                    InputData[i-1].individualName,
+                                                    InputData[i-1].SampleNoHaplotypes,
+                                                    InputData[i-1].DoseFileName,
+                                                    InputData[i].DoseFileName))
+                return false;
+
+    }
+
+    cout<<" Successful !!! "<<endl;
+    return true;
+}
+
+
+
+bool MetaMinimac::ReadInputFiles()
+{
+    cout<<"\n ----------------------------------"<<endl;
+    cout<<"  READING SAMPLE AND VARIANT NAMES "<<endl;
+    cout<<" ----------------------------------"<<endl<<endl;
+
+
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        //CopyParameters(InputData[i],InPrefixList[i]);
+        if(!InputData[i].LoadSampleNames(InPrefixList[i].c_str()))
+            return false;
+//        if(i>0)
+//            if(!InputData[i].CheckSampleConsistency(InputData[i-1].numSamples,
+//                                                       InputData[i-1].individualName,
+//                                                       InputData[i-1].SampleNoHaplotypes))
+//                return false;
+
+    }
+
+    cout<<"\n --------------------------------"<<endl;
+    cout<<"  FINDING COMMON SET OF VARIANTS "<<endl;
+    cout<<" --------------------------------"<<endl<<endl;
+
+    CopyParameters(InputData[0],OutputData);
+    MergeVariantList();
+
+    numHaplotypes=InputData[0].numHaplotypes;
+    finChromosome=InputData[0].VariantList[0].chr;
+    individualName=InputData[0].individualName;
+
+
+    if(Method!="A")
+    {
+
+        cout<<"\n --------------------------------------"<<endl;
+        cout<<"  READING RECOMBINATION SPECTRUM FILES "<<endl;
+        cout<<" --------------------------------------"<<endl<<endl;
+
+        for(int i=0;i<NoInPrefix;i++)
+        {
+            if(!InputData[i].LoadRecomSpectrum(InPrefixList[i].c_str()))
+                return false;
+
+        }
+        UpdateFlankFractions();
+
+        for(int i=0;i<NoInPrefix;i++)
+        {
+            InputData[i].PrintFlankLength();
+        }
+
+
+
+    }
+
+
+
+
+    LSQEstimates.resize(numHaplotypes);
+    ErrorPerSamplePerChunk.resize(numHaplotypes);
+    ErrorPerSample.resize(numHaplotypes,0.0);
+    ErrorSumSq=0.0;
+
+
+    cout<<"\n ---------------"<<endl;
+    cout<<"  CHUNK SUMMARY "<<endl;
+    cout<<" ---------------"<<endl<<endl;
+
+    CreateChunks();
+    if(!AnalyzeChunks())
+        return false;
+
+    cout<<" Total Sum of Squares for all Chunks = "<<ErrorSumSq<<endl;
+
+
+    return true;
+
+
+
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        cout<<"\n ----------------------------"<<endl;
+        cout<<"       INPUT FILE : ["<<i+1<<"] "<<endl;
+        cout<<" ----------------------------"<<endl;
+
+        cout<<" File Prefix        : "<<InPrefixList[i] <<endl;
+
+//        CopyParameters(InputData[i]);
+
+//        if(!InputData[i].ReadInputFiles(InPrefixList[i]))
+//            return false;
+
+
+
+    }
+
+
+
+
+    return true;
+}
+
+
+
+bool MetaMinimac::CreateChunks()
+{
+
+    int NoMarkers=CommonTypedVariantList.size();
+
+    ThisVariable.chunkLength=(NoMarkers/NoChunks);
+    ChunkList.resize(NoChunks);
+    ChunkList[0].StartBp=0;
+    ChunkList[0].StartWithWindowIndex=0;
+
+    int tempNoChunkMarkers = (NoMarkers/NoChunks);
+    int tempNoWindowMarkers = tempNoChunkMarkers/10;
+
+
+    int counter=0, chunkCounter = 0;
+
+    while(counter<NoCommonGenoVariants)
+    {
+        ThisChunk &tempChunk = ChunkList[chunkCounter];
+
+        tempChunk.EndWithWindowIndex=counter+tempNoChunkMarkers+tempNoWindowMarkers;
+        tempChunk.NoGenoAllStudies=tempChunk.EndWithWindowIndex-tempChunk.StartWithWindowIndex+1;
+        tempChunk.ChunkNo=chunkCounter;
+
+
+        if(chunkCounter>0)
+        {
+            tempChunk.StartWithWindowIndex=counter - tempNoWindowMarkers;
+        }
+
+        if(chunkCounter<NoChunks-1)
+        {
+            tempChunk.EndBp=CommonTypedVariantList[counter+tempNoChunkMarkers].bp;
+            ChunkList[chunkCounter+1].StartBp=tempChunk.EndBp+1;
+        }
+        else
+        {
+            tempChunk.EndBp=999999999;
+            tempChunk.EndWithWindowIndex=NoCommonGenoVariants-1;
+            tempChunk.NoGenoAllStudies=tempChunk.EndWithWindowIndex-tempChunk.StartWithWindowIndex+1;
+        }
+
+        counter+=tempNoChunkMarkers;
+        chunkCounter++;
+
+    }
+
+    return true;
+}
+
+
+
+
+bool MetaMinimac::FindCommonGenotypedVariants()
+{
+    std::map<string, int > HashUnionVariantMap;
+    std::unordered_set<string> CommonGenotypeVariantNameList;
+
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        for(int j=0;j<InputData[i].noTypedMarkers;j++)
+        {
+            variant *thisVariant=&InputData[i].TypedVariantList[j];
+            HashUnionVariantMap[thisVariant->name]++;
+        }
+    }
+
+    std::map<string, int >::iterator itStudy;
+
+    for (itStudy=HashUnionVariantMap.begin(); itStudy!=HashUnionVariantMap.end(); ++itStudy)
+    {
+        if(itStudy->second==NoInPrefix)
+        {
+            CommonGenotypeVariantNameList.insert(itStudy->first);
+        }
+
+    }
+    NoCommonGenoVariants = CommonGenotypeVariantNameList.size();
+
+
+
+    InputData[0].SortCommonGenotypeList(CommonGenotypeVariantNameList, SortedCommonGenoList, CommonTypedVariantList);
+
+    for(int i=1; i<NoInPrefix; i++)
+        InputData[i].ReadBasedOnSortCommonGenotypeList(SortedCommonGenoList);
+
+//
+//
+//    std::cout << " Total Union Number of Variants                      : " << OutputData.numMarkers << endl;
+//
+//    int MultipleSitesCount=0;
+//
+//    for(int i=0;i<NoInPrefix;i++)
+//    {
+//        std::cout << " Total Number of Variants in "<<i+1<<" Studies               : "
+//                  << NoVariantsByCategory[i] << endl;
+//        if(i>0)
+//            MultipleSitesCount+=NoVariantsByCategory[i];
+//    }
+//    std::cout << " Total Number of Variants in more than one study     : " << MultipleSitesCount<< endl <<endl;
+
+}
+
+
+
+
+bool MetaMinimac::MergeVariantList()
+{
+    std::map<int,vector<int> > HashUnionStudyMap;
+    std::map<int,vector<int> > HashUnionIndexMap;
+
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        for(int j=0;j<InputData[i].numMarkers;j++)
+        {
+            variant *thisVariant=&InputData[i].VariantList[j];
+            HashUnionStudyMap[thisVariant->bp].push_back(i);
+            HashUnionIndexMap[thisVariant->bp].push_back(j);
+        }
+    }
+
+    vector<int > StudyClassify;
+
+    OutputData.VariantList.clear();
+    int TotalUnionSites=0;
+
+    std::map<int,vector<int> >::iterator itStudy,itIndex=HashUnionIndexMap.begin();
+    std::map<string,vector<int> >::iterator itAlt;
+
+    FinalBP.resize(HashUnionStudyMap.size());
+
+    for (itStudy=HashUnionStudyMap.begin(); itStudy!=HashUnionStudyMap.end(); ++itStudy,++itIndex)
+    {
+        FinalBP[TotalUnionSites]=itStudy->first;
+        TotalUnionSites++;
+
+        vector<int> &StudyMapper= itStudy->second;
+        vector<int> &IndexMapper= itIndex->second;
+        std::map<string,vector<int> > AltAlleleMap;
+        string RefString="";
+
+
+        for(int Counter=0;Counter<(int)StudyMapper.size();Counter++)
+        {
+            int ThisStudy=StudyMapper[Counter];
+            int ThisIndex=IndexMapper[Counter];
+            variant *thisVariant=&InputData[ThisStudy].VariantList[ThisIndex];
+            if(RefString!="" && thisVariant->refAlleleString!=RefString)
+            {
+                std::cout << "\n ERROR !!! Mimatching Reference Allele for Position "<<thisVariant->bp << endl;
+                return false;
+            }
+
+            AltAlleleMap[thisVariant->refAlleleString+"_"+thisVariant->altAlleleString].push_back(ThisStudy);
+            AltAlleleMap[thisVariant->refAlleleString+"_"+thisVariant->altAlleleString].push_back(ThisIndex);
+        }
+
+        for (itAlt=AltAlleleMap.begin(); itAlt!=AltAlleleMap.end(); ++itAlt)
+        {
+            vector<int> &AltMapper = itAlt->second;
+
+            variant tempVariant;
+            tempVariant.import(InputData[AltMapper[0]].VariantList[AltMapper[1]],(int)(AltMapper.size()/2));
+
+            int Counter=0;
+            while(Counter<(int)AltMapper.size())
+            {
+                tempVariant.StudyID[Counter/2]=AltMapper[Counter];
+                tempVariant.StudyIDIndex[Counter/2]=AltMapper[Counter+1];
+                Counter+=2;
+            }
+            OutputData.VariantList.push_back(tempVariant);
+        }
+    }
+
+
+    OutputData.numMarkers=(int)OutputData.VariantList.size();
+    OutputData.numHaplotypes=InputData[0].numHaplotypes;
+
+
+    NoVariantsByCategory.resize(NoInPrefix,0);
+    ListofVariantsByCategory.resize(NoInPrefix);
+
+    for(int i=0;i<OutputData.numMarkers;i++)
+    {
+        variant *thisVariant=&OutputData.VariantList[i];
+        NoVariantsByCategory[thisVariant->NoStudies-1]++;
+        ListofVariantsByCategory[thisVariant->NoStudies-1].push_back(i);
+
+
+        if(thisVariant->NoStudies==NoInPrefix)
+        {
+            bool AllGenotyped=true;
+            int k=0;
+            while(AllGenotyped && k<NoInPrefix)
+            {
+                int StuId=thisVariant->StudyID[k];
+                int MarId=thisVariant->StudyIDIndex[k];
+                AllGenotyped=InputData[StuId].TypedSitesIndicator[MarId];
+                k++;
+            }
+            if(AllGenotyped)
+            {
+                for(k=0;k<NoInPrefix;k++)
+                {
+                    int StuId=thisVariant->StudyID[k];
+                    int MarId=thisVariant->StudyIDIndex[k];
+                    InputData[StuId].InterAllTypedSitesIndicator[MarId]=true;
+                    InputData[StuId].InterAllTypedSitesReverseMap.push_back(MarId);
+                }
+                GenoVariantsAllStudies.push_back(i);
+            }
+        }
+    }
+
+    TotalNoGenoVariantsAllStudies=(int)GenoVariantsAllStudies.size();
+
+    std::cout << " Total Union Number of Variants                      : " << OutputData.numMarkers << endl;
+
+    int MultipleSitesCount=0;
+
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        std::cout << " Total Number of Variants in "<<i+1<<" Studies               : "
+                  << NoVariantsByCategory[i] << endl;
+        if(i>0)
+            MultipleSitesCount+=NoVariantsByCategory[i];
+    }
+    std::cout << " Total Number of Variants in more than one study     : " << MultipleSitesCount<< endl <<endl;
+
+}
+
+
+
+
+double rosenbrock(vector<double> x)
+{
+  return -pow(x[0],1/x[0]);
+}
+
 
 void MetaMinimac::PrintVCFHeader()
 {
@@ -624,118 +1116,6 @@ bool MetaMinimac::AnalyzeChunks()
     return true;
 }
 
-bool MetaMinimac::CreateChunks()
-{
-
-    int End;
-    NoChunks=0;
-
-    int counter=0;
-    ChunkList.clear();
-
-
-
-    int ThisChunkCount=0;
-    while(counter<OutputData.numMarkers)
-    {
-        ThisChunk tempChunk;
-
-
-        tempChunk.ThisChunkInterAllTypedSitesReverseMap.clear();
-        tempChunk.Start=OutputData.VariantList[counter].bp;
-        tempChunk.StartIndex=counter;
-        tempChunk.ChunkNo=NoChunks;
-        tempChunk.End=tempChunk.Start+Window;
-
-        while(counter<OutputData.numMarkers && OutputData.VariantList[counter].bp<=tempChunk.End)
-        {
-//            if(GenoVariantsAllStudies[counter])
-
-            counter++;
-            ThisChunkCount++;
-
-        }
-
-        tempChunk.End=OutputData.VariantList[counter-1].bp;
-        tempChunk.NoVariants=ThisChunkCount;
-        tempChunk.EndIndex=counter-1;
-
-
-
-
-
-        ChunkList.push_back(tempChunk);
-        ThisChunkCount=0;
-        NoChunks++;
-    }
-
-    int PrevCounter=0;
-    int CheckSum=0;
-    counter=0;
-    cout<<" Number of Chunks to Analyze = "<<NoChunks<<endl<<endl;
-
-    cout<<" NO\t#VARIANTS\t#TYPED_SITES\tSTART\t\tEND"<<endl;
-    for(int i=0;i<NoChunks;i++)
-    {
-        ThisChunk &tempChunk=ChunkList[i];
-        tempChunk.NoGenoAllStudies=0;
-
-        cout<<" "<<i+1<<"\t"<<tempChunk.NoVariants;
-
-
-
-        while(counter<TotalNoGenoVariantsAllStudies &&
-               GenoVariantsAllStudies[counter]<=tempChunk.EndIndex)
-        {
-            tempChunk.NoGenoAllStudies++;
-            counter++;
-        }
-
-        tempChunk.ThisChunkInterAllTypedSitesReverseMap.resize(NoInPrefix);
-        for(int ThisPrefix=0;ThisPrefix<NoInPrefix;ThisPrefix++)
-        {
-
-            int j=0;
-            vector<int> &tempMapper=InputData[ThisPrefix].InterAllTypedSitesReverseMap;
-            vector<int> &finalMapper=tempChunk.ThisChunkInterAllTypedSitesReverseMap[ThisPrefix];
-            finalMapper.resize(tempChunk.NoGenoAllStudies);
-            while(j<tempChunk.NoGenoAllStudies)
-            {
-                finalMapper[j]=tempMapper[j+PrevCounter];
-
-//                   cout<<" TEMP MAPPER "<<j<<"\t"<<finalMapper[j]<<endl;
-                j++;
-
-
-
-            }
-//
-//        if(i==2)
-//            abort();
-
-//            if(i==1)
-//                abort();
-
-        }
-        cout<<"\t\t"<<tempChunk.NoGenoAllStudies<<"\t\t"<<tempChunk.Start<<"\t";
-        if(floor(log10(tempChunk.Start))+1 < 8)
-            cout<<"\t";
-
-        cout<<tempChunk.End<<endl;
-
-        PrevCounter+=tempChunk.NoGenoAllStudies;
-
-        CheckSum+=tempChunk.NoVariants;
-    }
-//abort();
-    if(CheckSum!=OutputData.numMarkers)
-    {
-        cout<<" ABORT !!! CONTANCT AUTHORT for CREATECHUNKS() "<<endl;
-        abort();
-    }
-
-}
-
 
 
 void TransForm(double &Value)
@@ -813,381 +1193,6 @@ void MetaMinimac::UpdateFlankFractions()
 }
 
 
-
-bool MetaMinimac::ReadEmpVariantAndChunk()
-{
-    cout<<"\n Gathering information for chunking ... "<<endl;
-    for(int i=0;i<NoInPrefix;i++)
-    {
-        InputData[i].LoadEmpVariantList();
-        cout<<" No Genotyped Sites = "<<InputData[i].noTypedMarkers<<endl;
-    }
-
-    cout<<" Successful !!! "<<endl;
-
-
-    FindCommonGenotypedVariants();
-    return true;
-}
-
-
-
-
-bool MetaMinimac::ParseInputVCFFiles()
-{
-
-    InPrefixList.clear();
-    size_t pos = 0;
-    std::string delimiter(ThisVariable.FileDelimiter) ;
-    std::string token;
-    int Count=0;
-    string tempName=ThisVariable.inputFiles.c_str();
-    while ((pos = tempName.find(delimiter)) != std::string::npos)
-    {
-        token = tempName.substr(0, pos);
-        cout<<  " Study "<<Count+1<<" Prefix                     : "<<token<<endl;
-
-        InPrefixList.push_back(token.c_str());
-        tempName.erase(0, pos + delimiter.length());
-        Count++;
-    }
-    cout<<  " Study "<<Count+1<<" Prefix                     : "<<tempName<<endl;
-    InPrefixList.push_back(tempName.c_str());
-
-
-    NoInPrefix=(int)InPrefixList.size();
-    InputData.clear();
-    InputData.resize(NoInPrefix);
-
-    cout<<  " Number of Studies to Meta-Impute   : "<<NoInPrefix<<endl;
-
-    if(NoInPrefix<2)
-    {
-        cout<<"\n ERROR ! Must have at least 2 studies for meta-imputation to work !!! "<<endl;
-        cout<<" Program aborting ... "<<endl<<endl;
-        return false;
-    }
-    if(NoInPrefix>4)
-    {
-        cout<<"\n ERROR ! Must have less than 5 studies for meta-imputation to work !!! "<<endl;
-        cout<<" Program aborting ... "<<endl<<endl;
-        return false;
-    }
-
-    return true;
-}
-
-
-bool MetaMinimac::CheckSampleNameCompatibility()
-{
-    cout<<"\n Checking Sample Compatibility across files ... "<<endl;
-
-    for(int i=0;i<NoInPrefix;i++)
-    {
-        if(!InputData[i].LoadSampleNames(InPrefixList[i].c_str()))
-            return false;
-        if(i>0)
-            if(!InputData[i].CheckSampleConsistency(InputData[i-1].numSamples,
-                                                    InputData[i-1].individualName,
-                                                    InputData[i-1].SampleNoHaplotypes,
-                                                    InputData[i-1].DoseFileName,
-                                                    InputData[i].DoseFileName))
-                return false;
-
-    }
-
-    cout<<" Successful !!! "<<endl;
-    return true;
-}
-
-
-
-bool MetaMinimac::ReadInputFiles()
-{
-    cout<<"\n ----------------------------------"<<endl;
-    cout<<"  READING SAMPLE AND VARIANT NAMES "<<endl;
-    cout<<" ----------------------------------"<<endl<<endl;
-
-
-    for(int i=0;i<NoInPrefix;i++)
-    {
-        //CopyParameters(InputData[i],InPrefixList[i]);
-        if(!InputData[i].LoadSampleNames(InPrefixList[i].c_str()))
-            return false;
-//        if(i>0)
-//            if(!InputData[i].CheckSampleConsistency(InputData[i-1].numSamples,
-//                                                       InputData[i-1].individualName,
-//                                                       InputData[i-1].SampleNoHaplotypes))
-//                return false;
-
-    }
-
-    cout<<"\n --------------------------------"<<endl;
-    cout<<"  FINDING COMMON SET OF VARIANTS "<<endl;
-    cout<<" --------------------------------"<<endl<<endl;
-
-    CopyParameters(InputData[0],OutputData);
-    MergeVariantList();
-
-    numHaplotypes=InputData[0].numHaplotypes;
-    finChromosome=InputData[0].VariantList[0].chr;
-    individualName=InputData[0].individualName;
-
-
-    if(Method!="A")
-    {
-
-        cout<<"\n --------------------------------------"<<endl;
-        cout<<"  READING RECOMBINATION SPECTRUM FILES "<<endl;
-        cout<<" --------------------------------------"<<endl<<endl;
-
-        for(int i=0;i<NoInPrefix;i++)
-        {
-            if(!InputData[i].LoadRecomSpectrum(InPrefixList[i].c_str()))
-                return false;
-
-        }
-        UpdateFlankFractions();
-
-        for(int i=0;i<NoInPrefix;i++)
-        {
-            InputData[i].PrintFlankLength();
-        }
-
-
-
-    }
-
-
-
-
-    LSQEstimates.resize(numHaplotypes);
-    ErrorPerSamplePerChunk.resize(numHaplotypes);
-    ErrorPerSample.resize(numHaplotypes,0.0);
-    ErrorSumSq=0.0;
-
-
-    cout<<"\n ---------------"<<endl;
-    cout<<"  CHUNK SUMMARY "<<endl;
-    cout<<" ---------------"<<endl<<endl;
-
-    CreateChunks();
-    if(!AnalyzeChunks())
-            return false;
-
-    cout<<" Total Sum of Squares for all Chunks = "<<ErrorSumSq<<endl;
-
-
-    return true;
-
-
-
-    for(int i=0;i<NoInPrefix;i++)
-    {
-        cout<<"\n ----------------------------"<<endl;
-        cout<<"       INPUT FILE : ["<<i+1<<"] "<<endl;
-        cout<<" ----------------------------"<<endl;
-
-        cout<<" File Prefix        : "<<InPrefixList[i] <<endl;
-
-//        CopyParameters(InputData[i]);
-
-//        if(!InputData[i].ReadInputFiles(InPrefixList[i]))
-//            return false;
-
-
-
-    }
-
-
-
-
-    return true;
-}
-
-
-
-
-bool MetaMinimac::FindCommonGenotypedVariants()
-{
-    std::map<string, int > HashUnionVariantMap;
-    std::unordered_set<string> CommonGenotypeVariantNameList;
-
-    for(int i=0;i<NoInPrefix;i++)
-    {
-        for(int j=0;j<InputData[i].noTypedMarkers;j++)
-        {
-            variant *thisVariant=&InputData[i].TypedVariantList[j];
-            HashUnionVariantMap[thisVariant->name]++;
-        }
-    }
-
-    std::map<string, int >::iterator itStudy;
-
-    for (itStudy=HashUnionVariantMap.begin(); itStudy!=HashUnionVariantMap.end(); ++itStudy)
-    {
-        if(itStudy->second==NoInPrefix)
-        {
-            CommonGenotypeVariantNameList.insert(itStudy->first);
-        }
-
-    }
-    cout<<CommonGenotypeVariantNameList.size()<<endl;
-
-
-
-    InputData[0].SortCommonGenotypeList(CommonGenotypeVariantNameList, SortedCommonGenoList);
-
-    for(int i=1; i<NoInPrefix; i++)
-        InputData[i].ReadBasedOnSortCommonGenotypeList(SortedCommonGenoList);
-
-    int h=0;
-//
-//
-//
-//    std::cout << " Total Union Number of Variants                      : " << OutputData.numMarkers << endl;
-//
-//    int MultipleSitesCount=0;
-//
-//    for(int i=0;i<NoInPrefix;i++)
-//    {
-//        std::cout << " Total Number of Variants in "<<i+1<<" Studies               : "
-//                  << NoVariantsByCategory[i] << endl;
-//        if(i>0)
-//            MultipleSitesCount+=NoVariantsByCategory[i];
-//    }
-//    std::cout << " Total Number of Variants in more than one study     : " << MultipleSitesCount<< endl <<endl;
-
-}
-
-
-
-
-bool MetaMinimac::MergeVariantList()
-{
-    std::map<int,vector<int> > HashUnionStudyMap;
-    std::map<int,vector<int> > HashUnionIndexMap;
-
-    for(int i=0;i<NoInPrefix;i++)
-    {
-        for(int j=0;j<InputData[i].numMarkers;j++)
-        {
-            variant *thisVariant=&InputData[i].VariantList[j];
-            HashUnionStudyMap[thisVariant->bp].push_back(i);
-            HashUnionIndexMap[thisVariant->bp].push_back(j);
-        }
-    }
-
-    vector<int > StudyClassify;
-
-    OutputData.VariantList.clear();
-    int TotalUnionSites=0;
-
-    std::map<int,vector<int> >::iterator itStudy,itIndex=HashUnionIndexMap.begin();
-    std::map<string,vector<int> >::iterator itAlt;
-
-    FinalBP.resize(HashUnionStudyMap.size());
-
-    for (itStudy=HashUnionStudyMap.begin(); itStudy!=HashUnionStudyMap.end(); ++itStudy,++itIndex)
-    {
-        FinalBP[TotalUnionSites]=itStudy->first;
-        TotalUnionSites++;
-
-        vector<int> &StudyMapper= itStudy->second;
-        vector<int> &IndexMapper= itIndex->second;
-        std::map<string,vector<int> > AltAlleleMap;
-        string RefString="";
-
-
-        for(int Counter=0;Counter<(int)StudyMapper.size();Counter++)
-        {
-            int ThisStudy=StudyMapper[Counter];
-            int ThisIndex=IndexMapper[Counter];
-            variant *thisVariant=&InputData[ThisStudy].VariantList[ThisIndex];
-            if(RefString!="" && thisVariant->refAlleleString!=RefString)
-            {
-                std::cout << "\n ERROR !!! Mimatching Reference Allele for Position "<<thisVariant->bp << endl;
-                return false;
-            }
-
-            AltAlleleMap[thisVariant->refAlleleString+"_"+thisVariant->altAlleleString].push_back(ThisStudy);
-            AltAlleleMap[thisVariant->refAlleleString+"_"+thisVariant->altAlleleString].push_back(ThisIndex);
-        }
-
-        for (itAlt=AltAlleleMap.begin(); itAlt!=AltAlleleMap.end(); ++itAlt)
-        {
-            vector<int> &AltMapper = itAlt->second;
-
-            variant tempVariant;
-            tempVariant.import(InputData[AltMapper[0]].VariantList[AltMapper[1]],(int)(AltMapper.size()/2));
-
-            int Counter=0;
-            while(Counter<(int)AltMapper.size())
-            {
-                tempVariant.StudyID[Counter/2]=AltMapper[Counter];
-                tempVariant.StudyIDIndex[Counter/2]=AltMapper[Counter+1];
-                Counter+=2;
-            }
-            OutputData.VariantList.push_back(tempVariant);
-        }
-    }
-
-
-    OutputData.numMarkers=(int)OutputData.VariantList.size();
-    OutputData.numHaplotypes=InputData[0].numHaplotypes;
-
-
-    NoVariantsByCategory.resize(NoInPrefix,0);
-    ListofVariantsByCategory.resize(NoInPrefix);
-
-    for(int i=0;i<OutputData.numMarkers;i++)
-    {
-        variant *thisVariant=&OutputData.VariantList[i];
-        NoVariantsByCategory[thisVariant->NoStudies-1]++;
-        ListofVariantsByCategory[thisVariant->NoStudies-1].push_back(i);
-
-
-        if(thisVariant->NoStudies==NoInPrefix)
-        {
-            bool AllGenotyped=true;
-            int k=0;
-            while(AllGenotyped && k<NoInPrefix)
-            {
-                int StuId=thisVariant->StudyID[k];
-                int MarId=thisVariant->StudyIDIndex[k];
-                AllGenotyped=InputData[StuId].TypedSitesIndicator[MarId];
-                k++;
-            }
-            if(AllGenotyped)
-            {
-                for(k=0;k<NoInPrefix;k++)
-                {
-                    int StuId=thisVariant->StudyID[k];
-                    int MarId=thisVariant->StudyIDIndex[k];
-                    InputData[StuId].InterAllTypedSitesIndicator[MarId]=true;
-                    InputData[StuId].InterAllTypedSitesReverseMap.push_back(MarId);
-                }
-                GenoVariantsAllStudies.push_back(i);
-            }
-        }
-    }
-
-    TotalNoGenoVariantsAllStudies=(int)GenoVariantsAllStudies.size();
-
-    std::cout << " Total Union Number of Variants                      : " << OutputData.numMarkers << endl;
-
-    int MultipleSitesCount=0;
-
-    for(int i=0;i<NoInPrefix;i++)
-    {
-        std::cout << " Total Number of Variants in "<<i+1<<" Studies               : "
-                  << NoVariantsByCategory[i] << endl;
-        if(i>0)
-            MultipleSitesCount+=NoVariantsByCategory[i];
-    }
-    std::cout << " Total Number of Variants in more than one study     : " << MultipleSitesCount<< endl <<endl;
-
-}
 
 
 void MetaMinimac::CopyParameters (HaplotypeSet &HapData,String InPrefix)
