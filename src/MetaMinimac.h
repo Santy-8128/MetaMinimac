@@ -11,6 +11,8 @@
 #include <iterator>
 #include <math.h>
 #include "MyVariables.h"
+#include <iomanip>
+#include <bitset>
 
 using namespace std;
 
@@ -56,20 +58,62 @@ class MetaMinimac
         myUserVariables ThisVariable;
 
 
+    IFILE vcfdosepartial;
+    vector<VcfFileReader*> InputDosageStream;
+    vector<VcfRecord*> CurrentRecordFromStudy;
         int NoChunks;
         vector<ThisChunk> ChunkList;
 
         void GetNumChunks();
 
+    char *VcfPrintStringPointer;
+    int VcfPrintStringPointerLength;
 
-        vector<vector<double> > LSQEstimates;
+    int CurrentFirstVariantBp;
+    int NoStudiesHasVariant;
+    vector<int> StudiesHasVariant;
+
+    vector<float> CurrentMetaImputedDosage;
+    vector<float> CurrentMetaImputedDosageSum;
+    vector<vector<double> > LSQEstimates;
         vector<double> ErrorPerSamplePerChunk;
         vector<double> ErrorPerSample;
         double ErrorSumSq,ErrorSumSqPerChunk;
+    vector<vector<double> > FinalLSQEstimates;
 
+    string GetDosageFileFullName(String prefix);
+
+    void CreateFinalLSQEstimates();
+
+    void PrintMetaImputedData();
+
+    int IsVariantEqual(VcfRecord &Rec1, VcfRecord &Rec2);
+
+    void ReadCurrentDosageData();
+
+    void PrintHaploidDosage(float &x);
+
+    void PrintDiploidDosage(float &x, float &y);
+
+    void PrintVariant(VcfRecord *temp);
+
+    bool        doesExistFile                       (String filename);
 
     bool CheckSampleNameCompatibility();
 
+    void OpenStreamInputDosageFiles();
+    void PrintCurrentVariant();
+    void CreateMetaImputedData();
+
+
+    void UpdateCurrentRecords();
+    void FindCurrentMinimumPosition();
+
+    string CreateInfo();
+
+    bool OpenStreamOutputDosageFiles();
+
+    bool OpenStreamFiles();
         vector<int> StudyOneVariants;
         vector<int> StudyTwoVariants;
         vector<int> StudyBothVariants;
@@ -81,8 +125,13 @@ class MetaMinimac
         }
 
 
+    void PrintChunkInformation();
+
+    void ReadFirstRecords();
     void GetMetaImpEstimates(int Sample, ThisChunk &MyChunk);
         String AnalyzeExperiment(myUserVariables &ThisVariables);
+
+    void AppendtoMainVcfFaster(int ChunkNo, int MaxIndex);
         MetaMinimac(String InputFile,String Outfile,bool Gzip,
                      String format,int window, int overlap, double Limit, String method)
         {
@@ -99,6 +148,7 @@ class MetaMinimac
 
 
 
+    bool OpenStreamOutputFiles();
 void PrintLSQEstimates(int ID);
         bool        CreateChunks                    ();
         bool        AnalyzeChunks                    ();

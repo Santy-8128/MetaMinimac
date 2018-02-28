@@ -125,7 +125,7 @@ class HaplotypeSet
     vector<variant> AllVariantList;
     int noTypedMarkers, noAllMarkers;
 
-
+    vector<float> CurrentHapDosage;
     vector<vector<double> > LooDosage;
         vector<vector<double> > HapDosage;
         vector<vector<double> > TypedGT;
@@ -231,7 +231,8 @@ class HaplotypeSet
 
         bool        UpdateFlankLength(int index,vector<double> tempRecom);
         bool        ProcessRecombination(int index,vector<double> tempRecom);
-        bool        LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype,int &numReadRecords);
+    bool        LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype);
+    bool        LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype,int &numReadRecords);
 
         bool GetSampleInformation(string filename);
 

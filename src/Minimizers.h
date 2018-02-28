@@ -99,10 +99,33 @@ double FixedSSQ();
 
 
 
-void logitTransform(vector<double> From,vector<double> &To,
-                                  vector< vector<double> > &Covariates,
-                                  int NoDimensions,
-                                  String Method)
+void logitTransform(vector<double> &From,
+                    vector<double> &To)
+{
+
+    double sum=1.0;
+    int NoDimensions = (int)To.size();
+    for(int i=0; i < (NoDimensions-1); i++) sum+=exp(From[i]);
+    for(int i=0; i < (NoDimensions-1); i++)  To[i]=exp(From[i])/sum;
+    To[NoDimensions-1]=1.0/sum;
+
+
+    double checkSum=0.0;
+    for(int i=0;i<To.size();i++)
+        checkSum+=To[i];
+    if(checkSum>1.0001)
+        abort();
+
+
+}
+
+
+
+void logitTransform(vector<double> From,
+                    vector<double> &To,
+                    vector< vector<double> > &Covariates,
+                    int NoDimensions,
+                    String Method)
 {
 
     double sum=0.0;
@@ -164,7 +187,7 @@ void logitTransform(vector<double> From,vector<double> &To,
 
 
 
-void logTransform(vector<double> From,vector<double> &To,int NoDimensions)
+void logTransform(vector<double> &From,vector<double> &To,int NoDimensions)
 {
 
     double p=1.0;
@@ -172,11 +195,9 @@ void logTransform(vector<double> From,vector<double> &To,int NoDimensions)
     {
         double logit = 1.0/(1.0+exp(0.0-From[i]));
         To[i]=p*logit;
-//        cout<<To[i]<<"\t";
         p = p*(1.-logit);
     }
     To[NoDimensions]=p;
-//    cout<<To[NoDimensions];
 
 }
 
@@ -357,7 +378,6 @@ double LogOddsModel::metaInitialize(int SampleId, vector<HaplotypeSet> &InputDat
     NoMarkers=MyChunk.NoGenoAllStudies;
     SampleID=SampleId;
 
-
     LooDosageVal.resize(NoStudies);
     for(int i=0;i<NoStudies;i++)
     {
@@ -370,6 +390,7 @@ double LogOddsModel::metaInitialize(int SampleId, vector<HaplotypeSet> &InputDat
         }
     }
 
+    ChipGTVal.resize(NoMarkers);
     for(int j=0; j<NoMarkers; j++)
     {
         assert(MyChunk.StartWithWindowIndex+j<ThisStudy->NoCommonGenoVariants);
@@ -383,47 +404,29 @@ double LogOddsModel::operator()(vector<double> x)
 
 
     vector<double> tempVar(NoDimensions);
-    vector< vector<double> > Covariates;
     double sum=0.0;
 
 
-    if(Method=="A")
-        logitTransform(x,tempVar,Covariates,NoDimensions,Method);
-
+    logitTransform(x,tempVar);
 
     for(int ThisMarker=0;ThisMarker<NoMarkers;ThisMarker++)
     {
-
-        if(Method=="B" || Method =="C")
-        {
-            Covariates.clear();
-            Covariates.resize(1);
-            Covariates[0].resize(NoDimensions-1);
-
-            for(int j=0;j<(NoDimensions-1);j++)
-            {
-                Covariates[0][j]=(*(FlankFrac[j][ThisMarker]));
-            }
-            logitTransform(x,tempVar,Covariates,NoDimensions,Method);
-
-        }
-
 
         double temp=0.0;
 
         for(int j=0;j<NoDimensions;j++)
         {
-            temp+=((tempVar[j])*((*LooDosage[j])[ThisMarker]));
+            temp+=((tempVar[j])*(LooDosageVal[j][ThisMarker]));
         }
 
-        temp-=(*ChipGT)[ThisMarker];
+        temp-=(ChipGTVal)[ThisMarker];
         temp=temp*temp;
         sum+=temp;
 
     }
 
 
-//  cout<<"\t= "<<sum<<"\n";
+ //   cout<<x[0]<<"\t"<<x[1]<<"\t"<<sum<<endl;
   return sum;
 }
 

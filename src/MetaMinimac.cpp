@@ -5,6 +5,519 @@
 #include "MyVariables.h"
 using BT::Simplex;
 
+
+
+bool MetaMinimac::doesExistFile(String filename)
+{
+    IFILE ifs = ifopen(filename.c_str(), "r");
+    if (ifs)
+    {
+        ifclose(ifs);
+        return true;
+    }
+    else
+    {
+        ifclose(ifs);
+        return false;
+    }
+}
+
+
+string MetaMinimac::GetDosageFileFullName(String prefix)
+{
+    if(doesExistFile(prefix+".dose.vcf"))
+        return (string)prefix+".dose.vcf";
+    else if(doesExistFile(prefix+".dose.vcf.gz"))
+        return (string)prefix+".dose.vcf.gz";
+}
+
+void MetaMinimac::OpenStreamInputDosageFiles()
+{
+    InputDosageStream.resize(NoInPrefix);
+    CurrentRecordFromStudy.resize(NoInPrefix);
+    StudiesHasVariant.resize(NoInPrefix);
+    for(int i=0; i<NoInPrefix;i++)
+    {
+        VcfHeader header;
+        InputDosageStream[i] = new VcfFileReader();
+        CurrentRecordFromStudy[i]= new VcfRecord();
+        InputDosageStream[i]->open( (GetDosageFileFullName(InPrefixList[i])).c_str() , header);
+
+        InputDosageStream[i]->readRecord(*CurrentRecordFromStudy[i]);
+        //        cout<<CurrentRecordFromStudy[i]->get1BasedPosition()<<endl;
+    }
+}
+
+
+
+bool MetaMinimac::OpenStreamOutputDosageFiles()
+{
+    bool gzip=ThisVariable.gzip;
+    VcfPrintStringPointer = (char*)malloc(sizeof(char) * (ThisVariable.PrintBuffer));
+
+    vcfdosepartial = ifopen(ThisVariable.outfile + ".metaDose.vcf" + (gzip ? ".gz" : ""), "wb", gzip ?InputFile::BGZF:InputFile::UNCOMPRESSED);
+    if(vcfdosepartial==NULL)
+    {
+        cout <<"\n\n ERROR !!! \n Could NOT create the following file : "<< ThisVariable.outfile + ".dose.vcf" + (gzip ? ".gz" : "") <<endl;
+        return false;
+    }
+
+    ifprintf(vcfdosepartial,"##fileformat=VCFv4.1\n");
+    time_t t = time(0);
+    struct tm * now = localtime( & t );
+    ifprintf(vcfdosepartial,"##filedate=%d.%d.%d\n",(now->tm_year + 1900),(now->tm_mon + 1) ,now->tm_mday);
+    ifprintf(vcfdosepartial,"##source=MetaMinimac.v%s\n",VERSION);
+    ifprintf(vcfdosepartial,"##contig=<ID=%s>\n",InputData[0].finChromosome.c_str());
+    ifprintf(vcfdosepartial,"##INFO=<ID=AF,Number=1,Type=Float,Description=\"Estimated Alternate Allele Frequency\">\n");
+    ifprintf(vcfdosepartial,"##INFO=<ID=MAF,Number=1,Type=Float,Description=\"Estimated Minor Allele Frequency\">\n");
+    ifprintf(vcfdosepartial,"##INFO=<ID=R2,Number=1,Type=Float,Description=\"Estimated Imputation Accuracy (R-square)\">\n");
+    ifprintf(vcfdosepartial,"##INFO=<ID=ER2,Number=1,Type=Float,Description=\"Empirical (Leave-One-Out) R-square (available only for genotyped variants)\">\n");
+    ifprintf(vcfdosepartial,"##INFO=<ID=IMPUTED,Number=0,Type=Flag,Description=\"Marker was imputed but NOT genotyped\">\n");
+    ifprintf(vcfdosepartial,"##INFO=<ID=TYPED,Number=0,Type=Flag,Description=\"Marker was genotyped AND imputed\">\n");
+    ifprintf(vcfdosepartial,"##INFO=<ID=TYPED_ONLY,Number=0,Type=Flag,Description=\"Marker was genotyped but NOT imputed\">\n");
+
+    if(ThisVariable.infoDetails)
+    {
+        ifprintf(vcfdosepartial,"##INFO=<ID=NST,Number=1,Type=Integer,Description=\"Number of studies marker was found during meta-imputation\">\n");
+        for(int i=0; i<NoInPrefix; i++)
+            ifprintf(vcfdosepartial,"##INFO=<ID=S%d,Number=0,Type=Flag,Description=\"Marker was present in Study %d\">\n",i+1,i+1);
+    }
+
+    if(ThisVariable.GT)
+        ifprintf(vcfdosepartial,"##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");
+    if(ThisVariable.DS)
+        ifprintf(vcfdosepartial,"##FORMAT=<ID=DS,Number=1,Type=Float,Description=\"Estimated Alternate Allele Dosage : [P(0/1)+2*P(1/1)]\">\n");
+    if(ThisVariable.HDS)
+        ifprintf(vcfdosepartial,"##FORMAT=<ID=HDS,Number=2,Type=Float,Description=\"Estimated Haploid Alternate Allele Dosage \">\n");
+    if(ThisVariable.GP)
+        ifprintf(vcfdosepartial,"##FORMAT=<ID=GP,Number=3,Type=Float,Description=\"Estimated Posterior Probabilities for Genotypes 0/0, 0/1 and 1/1 \">\n");
+    if(ThisVariable.SD)
+        ifprintf(vcfdosepartial,"##FORMAT=<ID=SD,Number=1,Type=Float,Description=\"Variance of Posterior Genotype Probabilities\">\n");
+
+    ifprintf(vcfdosepartial,"##metaMinimac_Command=%s\n",ThisVariable.CommandLine.c_str());
+
+    ifprintf(vcfdosepartial,"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
+
+    for(int Id=0;Id<InputData[0].numSamples;Id++)
+    {
+        ifprintf(vcfdosepartial,"\t%s",InputData[0].individualName[Id].c_str());
+    }
+    ifprintf(vcfdosepartial,"\n");
+    ifclose(vcfdosepartial);
+    return true;
+}
+
+
+
+void MetaMinimac::PrintVariant(VcfRecord *temp)
+{
+    cout<<temp->get1BasedPosition()<<":"<<temp->getRefStr()<<"_"<<temp->getAltStr()<<endl;
+}
+
+void MetaMinimac::UpdateCurrentRecords()
+{
+   // cout<<" UPDATE "<<endl;
+    for(int i=0; i<NoStudiesHasVariant;i++)
+    {
+        int index = StudiesHasVariant[i];
+     //   PrintVariant(CurrentRecordFromStudy[index]);
+        if(!InputDosageStream[index]->readRecord(*CurrentRecordFromStudy[index]))
+            CurrentRecordFromStudy[index]->set1BasedPosition(999999999);
+       // PrintVariant(CurrentRecordFromStudy[index]);
+
+    }
+
+    //abort();
+}
+
+
+
+int MetaMinimac::IsVariantEqual(VcfRecord &Rec1, VcfRecord &Rec2)
+{
+    if(strcmp(Rec1.getRefStr(),Rec2.getRefStr())!=0)
+        return 0;
+    if(strcmp(Rec1.getAltStr(),Rec2.getAltStr())!=0)
+        return 0;
+    return 1;
+}
+
+
+
+void MetaMinimac::FindCurrentMinimumPosition()
+{
+
+    if(NoInPrefix==2)
+    {
+        int a=CurrentRecordFromStudy[0]->get1BasedPosition();
+        int b=CurrentRecordFromStudy[1]->get1BasedPosition();
+        CurrentFirstVariantBp=a;
+        NoStudiesHasVariant = 1;
+        StudiesHasVariant[0]=0;
+
+        if (b == a)
+        {
+            if(IsVariantEqual(*CurrentRecordFromStudy[0], *CurrentRecordFromStudy[1])==1)
+            {
+                NoStudiesHasVariant = 2;
+                StudiesHasVariant[1] = 1;
+            }
+        }
+        else if (b < a)
+        {
+            StudiesHasVariant[0]=1;
+            CurrentFirstVariantBp=b;
+        }
+
+    }
+    else if (NoInPrefix==3)
+    {
+
+        CurrentFirstVariantBp=CurrentRecordFromStudy[0]->get1BasedPosition();
+
+        for(int i=1;i<NoInPrefix;i++)
+            if(CurrentRecordFromStudy[i]->get1BasedPosition() < CurrentFirstVariantBp)
+                CurrentFirstVariantBp=CurrentRecordFromStudy[i]->get1BasedPosition();
+
+        NoStudiesHasVariant=0;
+        VcfRecord *minRecord;
+        minRecord = new VcfRecord();
+        int Begin=0;
+        for(int i=0;i<NoInPrefix;i++)
+        {
+            if(CurrentRecordFromStudy[i]->get1BasedPosition() == CurrentFirstVariantBp)
+            {
+                if(Begin==0)
+                {
+                    Begin=1;
+                    minRecord=CurrentRecordFromStudy[i];
+                    StudiesHasVariant[NoStudiesHasVariant] = i;
+                    NoStudiesHasVariant++;
+                }
+                else if (IsVariantEqual(*minRecord, *CurrentRecordFromStudy[i])==1)
+                {
+                    StudiesHasVariant[NoStudiesHasVariant] = i;
+                    NoStudiesHasVariant++;
+                }
+            }
+        }
+        int h=0;
+    }
+}
+
+
+string MetaMinimac::CreateInfo()
+{
+    if(!ThisVariable.infoDetails)
+        return ".";
+    stringstream ss;
+    ss<<"NST=";
+    ss<<NoStudiesHasVariant;
+    for(int i=0; i<NoStudiesHasVariant; i++)
+    {
+        ss<<";S";
+        ss<<StudiesHasVariant[i]+1;
+    }
+    return ss.str();
+}
+
+void MetaMinimac::PrintCurrentVariant()
+{
+    VcfRecord* tempRecord = CurrentRecordFromStudy[StudiesHasVariant[0]];
+    VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength, "%s\t%d\t%s\t%s\t%s\t.\tPASS\t%s\tHDS:GP",
+                                         tempRecord->getChromStr(), tempRecord->get1BasedPosition(),
+                                         tempRecord->getIDStr(), tempRecord->getRefStr(),
+                                         tempRecord->getAltStr(), CreateInfo().c_str());
+
+
+}
+
+
+void MetaMinimac::PrintMetaImputedData()
+{
+
+    for(int Id=0;Id<InputData[0].numSamples;Id++)
+    {
+        int NoHaps = InputData[0].SampleNoHaplotypes[Id];
+        if(NoHaps==2)
+            PrintDiploidDosage((CurrentMetaImputedDosage[2*Id]), (CurrentMetaImputedDosage[2*Id+1]));
+        else if(NoHaps==1)
+            PrintHaploidDosage((CurrentMetaImputedDosage[2*Id]));
+        else
+            abort();
+        int h=0;
+
+    }
+
+    VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"\n");
+    if(VcfPrintStringPointerLength > 0.9 * (float)(ThisVariable.PrintBuffer))
+    {
+        ifprintf(vcfdosepartial,"%s",VcfPrintStringPointer);
+        VcfPrintStringPointerLength=0;
+    }
+
+}
+
+
+
+
+void MetaMinimac::PrintDiploidDosage(float &x, float &y)
+{
+
+    bool colonIndex=false;
+    VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"\t");
+
+    if(x<0.0005 && y<0.0005)
+    {
+        if(ThisVariable.GT)
+        {
+
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"0|0");
+            colonIndex=true;
+        }
+        if(ThisVariable.DS)
+        {
+
+            if(colonIndex)
+                VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"0");
+            colonIndex=true;
+        }
+        if(ThisVariable.HDS)
+        {
+
+            if(colonIndex)
+                VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"0,0");
+            colonIndex=true;
+        }
+        if(ThisVariable.GP)
+        {
+
+            if(colonIndex)
+                VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+            colonIndex=true;
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"1,0,0");
+        }
+        if(ThisVariable.SD)
+        {
+            if(colonIndex)
+                VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+            colonIndex=true;
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"0");
+        }
+        return;
+    }
+
+
+    if(ThisVariable.GT)
+    {
+
+        VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"%d|%d",(x>0.5),(y>0.5));
+        colonIndex=true;
+    }
+    if(ThisVariable.DS)
+    {
+
+        if(colonIndex)
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+        VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"%.3f",x+ y);
+        colonIndex=true;
+    }
+    if(ThisVariable.HDS)
+    {
+
+        if(colonIndex)
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+        VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"%.3f,%.3f",x , y);
+        colonIndex=true;
+    }
+    if(ThisVariable.GP)
+    {
+
+        if(colonIndex)
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+        colonIndex=true;
+        VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"%.3f,%.3f,%.3f",(1-x)*(1-y),x*(1-y)+y*(1-x),x*y);
+    }
+    if(ThisVariable.SD)
+    {
+        if(colonIndex)
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+        colonIndex=true;
+        VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"%.3f", x*(1-x) + y*(1-y));
+    }
+
+
+
+}
+
+void MetaMinimac::PrintHaploidDosage(float &x)
+{
+    bool colonIndex=false;
+    VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"\t");
+
+    if(x<0.0005)
+    {
+        if(ThisVariable.GT)
+        {
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"0");
+            colonIndex=true;
+        }
+        if(ThisVariable.DS)
+        {
+
+            if(colonIndex)
+                VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"0");
+            colonIndex=true;
+        }
+        if(ThisVariable.HDS)
+        {
+
+            if(colonIndex)
+                VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"0");
+            colonIndex=true;
+        }
+        if(ThisVariable.GP)
+        {
+
+            if(colonIndex)
+                VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+            colonIndex=true;
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"1,0");
+        }
+        if(ThisVariable.SD)
+        {
+            if(colonIndex)
+                VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+            colonIndex=true;
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"0");
+        }
+        return;
+
+    }
+
+
+
+    if(ThisVariable.GT)
+    {
+        VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"%d",(x>0.5));
+        colonIndex=true;
+    }
+    if(ThisVariable.DS)
+    {
+
+        if(colonIndex)
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+        VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"%.3f",x);
+        colonIndex=true;
+    }
+    if(ThisVariable.HDS)
+    {
+
+        if(colonIndex)
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+        VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"%.3f",x );
+        colonIndex=true;
+    }
+    if(ThisVariable.GP)
+    {
+
+        if(colonIndex)
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+        colonIndex=true;
+        VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"%.3f,%.3f",1-x,x);
+    }
+    if(ThisVariable.SD)
+    {
+        if(colonIndex)
+            VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,":");
+        colonIndex=true;
+        VcfPrintStringPointerLength+=sprintf(VcfPrintStringPointer+VcfPrintStringPointerLength,"%.3f", x*(1-x));
+    }
+}
+
+void MetaMinimac::ReadCurrentDosageData()
+{
+
+    for(int i=0; i<NoStudiesHasVariant; i++)
+    {
+        int index = StudiesHasVariant[i];
+        InputData[index].LoadHapDoseVariant(CurrentRecordFromStudy[index]->getGenotypeInfo());
+    }
+    int h=0;
+}
+
+
+
+void MetaMinimac::CreateMetaImputedData()
+{
+
+
+    if(NoStudiesHasVariant==1)
+    {
+        CurrentMetaImputedDosage=InputData[StudiesHasVariant[0]].CurrentHapDosage;
+        return;
+    }
+
+
+    fill(CurrentMetaImputedDosage.begin(),CurrentMetaImputedDosage.end(),0.0);
+    if(NoStudiesHasVariant==1)
+    {
+        for(int i=0; i<NoStudiesHasVariant; i++)
+        {
+            int index=StudiesHasVariant[i];
+            for(int j=0; j<InputData[0].numHaplotypes; j++)
+            {
+                CurrentMetaImputedDosage[j]+=  LSQEstimates[j][index] * InputData[index].CurrentHapDosage[j];
+            }
+        }
+        return;
+    }
+
+    fill(CurrentMetaImputedDosageSum.begin(),CurrentMetaImputedDosageSum.end(),1e-6);
+    for(int i=0; i<NoStudiesHasVariant; i++)
+    {
+        int index=StudiesHasVariant[i];
+        for(int j=0; j<InputData[0].numHaplotypes; j++)
+        {
+            CurrentMetaImputedDosageSum[j]+= LSQEstimates[j][index];
+            CurrentMetaImputedDosage[j]+=  LSQEstimates[j][index] * InputData[index].CurrentHapDosage[j];
+        }
+    }
+    for(int j=0; j<InputData[0].numHaplotypes; j++)
+    {
+        CurrentMetaImputedDosage[j]/=CurrentMetaImputedDosageSum[j];
+    }
+
+}
+
+void MetaMinimac::AppendtoMainVcfFaster(int ChunkNo, int MaxIndex)
+{
+    VcfPrintStringPointerLength=0;
+
+    vcfdosepartial = ifopen(ThisVariable.outfile + ".metaDose.vcf" + (ThisVariable.gzip ? ".gz" : ""), "a", gzip ?InputFile::BGZF:InputFile::UNCOMPRESSED);
+    do
+    {
+        FindCurrentMinimumPosition();
+        if(CurrentFirstVariantBp>ChunkList[ChunkNo].EndBp)
+            break;
+        PrintCurrentVariant();
+        ReadCurrentDosageData();
+        CreateMetaImputedData();
+        PrintMetaImputedData();
+        UpdateCurrentRecords();
+    }while(true);
+
+    ifprintf(vcfdosepartial,"%s",VcfPrintStringPointer);
+    ifclose(vcfdosepartial);
+    int h=0;
+}
+
+
+
+
 String MetaMinimac::AnalyzeExperiment(myUserVariables &ThisVariables)
 {
     ThisVariable=ThisVariables;
@@ -35,53 +548,90 @@ String MetaMinimac::AnalyzeExperiment(myUserVariables &ThisVariables)
         return "Input.VCF.Dose.Error";
     }
 
+    OpenStreamInputDosageFiles();
+    if (!OpenStreamOutputDosageFiles())
+    {
+        cout <<" Please check your write permissions in the output directory\n OR maybe the output directory does NOT exist ...\n";
+        cout << "\n Program Exiting ... \n\n";
+        return "File.Write.Error";
+    }
 
+
+    PrintChunkInformation();
+
+    cout<<" ------------------------------------------------------------------------------"<<endl;
+    cout<<"                           META-IMPUTATION ANALYSIS                            "<<endl;
+    cout<<" ------------------------------------------------------------------------------"<<endl;
+
+
+
+    LSQEstimates.resize(InputData[0].numHaplotypes);
+    FinalLSQEstimates.resize(InputData[0].numHaplotypes);
+
+    for(int j=0;j<InputData[0].numHaplotypes; j++)
+    {
+        LSQEstimates[j].resize(NoInPrefix);
+        FinalLSQEstimates[j].resize(pow(2,NoInPrefix));
+    }
+
+//  ErrorPerSamplePerChunk.resize(InputData[0].numHaplotypes);
+//  ErrorPerSample.resize(InputData[0].numHaplotypes,0.0);
 
     for(int i=0; i<NoChunks; i++)
     {
+        cout<<"\n -------------------------------------------"<<endl;
+        cout<<" Analyzing Chunk "<<i+1<<"/"<<NoChunks<<" ["<<CommonTypedVariantList[0].chr<<":";
+        cout<< CommonTypedVariantList[ChunkList[i].StartWithWindowIndex].bp<<"-";
+        cout<<CommonTypedVariantList[ChunkList[i].EndWithWindowIndex].bp<<"]"<< endl;
+        cout<<" -------------------------------------------"<<endl;
 
-        for(int j=0;j<InputData[0].numHaplotypes; j++)
-            GetMetaImpEstimates(j,ChunkList[i]);
+
+        for(int j=0;j<InputData[0].numSamples; j++)
+        {
+            if(InputData[0].SampleNoHaplotypes[i]==2)
+            {
+
+                GetMetaImpEstimates(2*j,ChunkList[i]);
+                GetMetaImpEstimates(2*j+1,ChunkList[i]);
+            }
+            else
+                GetMetaImpEstimates(2*j,ChunkList[i]);
+        }
+
+
+
+        AppendtoMainVcfFaster(i,200);
+
+        int h=0;
+
+    }
+    for(int i=0; i<NoInPrefix;i++) {
+        delete InputDosageStream[i];
+        delete CurrentRecordFromStudy[i] ;
     }
 
     return "Success";
 }
 
 
+
+
 void MetaMinimac::GetMetaImpEstimates(int Sample, ThisChunk &MyChunk)
 {
 
     LogOddsModel ThisSampleAnalysis;
-    ThisSampleAnalysis.metaInitialize(Sample,InputData,this,MyChunk);
 
-    int h=0;
+    if((Sample+1)%200==0 || Sample==InputData[0].numHaplotypes-1)
+        cout<<" Finished Analyzing "<<Sample+1<<" haplotypes ..."<<endl;
 
-//    else if(Method=="B")
-//    {
-//
-//
-//        vector<double> init(NoInPrefix, 0.0);
-////        LSQEstimates[Sample].resize(NoInPrefix+1);
-//
-//
-//        LSQEstimates[Sample]=Simplex(ThisSampleAnalysis, init);
+    ThisSampleAnalysis.metaInitialize(Sample, InputData, this, MyChunk);
+    vector<double> init(NoInPrefix-1, 0.0);
+    vector<double> MiniMizer=Simplex(ThisSampleAnalysis, init);
+    logitTransform(MiniMizer,LSQEstimates[Sample]);
+
 //        ErrorPerSamplePerChunk[Sample]=ThisSampleAnalysis(LSQEstimates[Sample]);
 //        ErrorPerSample[Sample]+=ErrorPerSamplePerChunk[Sample];
 //        ErrorSumSqPerChunk+=ErrorPerSamplePerChunk[Sample];
-////        logTransform(MiniMizer,LSQEstimates[Sample],NoInPrefix);
-//
-//    }
-
-//    LeastSquareError ThisSampleAnalysis;
-//    ThisSampleAnalysis.initialize(Sample,InputData,this,MyChunk);
-//
-//    vector<double> init(NoInPrefix, 0.0);
-//    //        cout<<"\n WELL \n";
-//    LSQEstimates[Sample].resize(NoInPrefix);
-//    PositiveTransform(Simplex(ThisSampleAnalysis, init),LSQEstimates[Sample],NoInPrefix);
-//
-
-
 }
 
 
@@ -91,13 +641,10 @@ bool MetaMinimac::ReadEmpVariantAndChunk()
     for(int i=0;i<NoInPrefix;i++)
     {
         InputData[i].LoadEmpVariantList();
-        cout<<" No Genotyped Sites = "<<InputData[i].noTypedMarkers<<endl;
+        cout<<" -- Study "<<i+1<<" #Genotyped Sites = "<<InputData[i].noTypedMarkers<<endl;
     }
-
-    cout<<" Successful !!! "<<endl;
-
-
     FindCommonGenotypedVariants();
+    cout<<" Summary: Found "<< InputData[0].numSamples<<" samples across "<<NoInPrefix<<" studies on "<< NoCommonGenoVariants<<" common genotyped sites !" <<endl;
 
     GetNumChunks();
     CreateChunks();
@@ -106,7 +653,8 @@ bool MetaMinimac::ReadEmpVariantAndChunk()
 }
 
 
-void MetaMinimac::GetNumChunks() {
+void MetaMinimac::GetNumChunks()
+{
 
     int NoMarkers = CommonTypedVariantList.size();
     int StartPos = CommonTypedVariantList[0].bp;
@@ -120,6 +668,33 @@ void MetaMinimac::GetNumChunks() {
     return;
 }
 
+
+void MetaMinimac::PrintChunkInformation()
+{
+
+    cout<<"\n ------------------------------------------------------------------------------"<<endl;
+    cout<<"                               CHUKNING SUMMARY                               "<<endl;
+    cout<<" ------------------------------------------------------------------------------"<<endl;
+    cout<<" No   LeftBuffer      LeftEnd    RightPoint   RightBuffer    #TypedSites"<<endl;
+    cout<<" -------------------------------------------------------------------------------"<<endl;
+
+    for(int i=0;i<NoChunks;i++)
+    {
+        cout<<setw(3)<<i+1<<"  "<<setw(11);
+        i==0? cout<<" START":cout<<CommonTypedVariantList[ChunkList[i].StartWithWindowIndex].bp ;
+        cout<<"  "<<setw(11);
+        i==0? cout<<" START": cout<<ChunkList[i].StartBp;
+        cout<<"  "<<setw(12);
+        i==NoChunks-1? cout<<" END":cout<<ChunkList[i].EndBp;
+        cout<<"  "<<setw(12);
+        i==NoChunks-1? cout<<" END":cout<<CommonTypedVariantList[ChunkList[i].EndWithWindowIndex].bp;
+        cout<<"  "<<setw(13)<<ChunkList[i].NoVariants<<endl;
+
+
+
+    }
+    cout<<endl<<endl;
+}
 
 
 
@@ -136,13 +711,10 @@ bool MetaMinimac::ParseInputVCFFiles()
     while ((pos = tempName.find(delimiter)) != std::string::npos)
     {
         token = tempName.substr(0, pos);
-        cout<<  " Study "<<Count+1<<" Prefix                     : "<<token<<endl;
-
         InPrefixList.push_back(token.c_str());
         tempName.erase(0, pos + delimiter.length());
         Count++;
     }
-    cout<<  " Study "<<Count+1<<" Prefix                     : "<<tempName<<endl;
     InPrefixList.push_back(tempName.c_str());
 
 
@@ -150,9 +722,14 @@ bool MetaMinimac::ParseInputVCFFiles()
     InputData.clear();
     InputData.resize(NoInPrefix);
 
-    cout<<  " Number of Studies to Meta-Impute   : "<<NoInPrefix<<endl;
+    cout<<endl<<  " Number of Studies                  : "<<NoInPrefix<<endl;
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        cout<<  " -- Study "<<i+1<<" Prefix                  : "<<InPrefixList[i]<<endl;
+    }
 
-    if(NoInPrefix<2)
+
+        if(NoInPrefix<2)
     {
         cout<<"\n ERROR ! Must have at least 2 studies for meta-imputation to work !!! "<<endl;
         cout<<" Program aborting ... "<<endl<<endl;
@@ -187,114 +764,10 @@ bool MetaMinimac::CheckSampleNameCompatibility()
 
     }
 
-    cout<<" Successful !!! "<<endl;
+    cout<<" -- Successful !!! "<<endl;
     return true;
 }
 
-
-
-bool MetaMinimac::ReadInputFiles()
-{
-    cout<<"\n ----------------------------------"<<endl;
-    cout<<"  READING SAMPLE AND VARIANT NAMES "<<endl;
-    cout<<" ----------------------------------"<<endl<<endl;
-
-
-    for(int i=0;i<NoInPrefix;i++)
-    {
-        //CopyParameters(InputData[i],InPrefixList[i]);
-        if(!InputData[i].LoadSampleNames(InPrefixList[i].c_str()))
-            return false;
-//        if(i>0)
-//            if(!InputData[i].CheckSampleConsistency(InputData[i-1].numSamples,
-//                                                       InputData[i-1].individualName,
-//                                                       InputData[i-1].SampleNoHaplotypes))
-//                return false;
-
-    }
-
-    cout<<"\n --------------------------------"<<endl;
-    cout<<"  FINDING COMMON SET OF VARIANTS "<<endl;
-    cout<<" --------------------------------"<<endl<<endl;
-
-    CopyParameters(InputData[0],OutputData);
-    MergeVariantList();
-
-    numHaplotypes=InputData[0].numHaplotypes;
-    finChromosome=InputData[0].VariantList[0].chr;
-    individualName=InputData[0].individualName;
-
-
-    if(Method!="A")
-    {
-
-        cout<<"\n --------------------------------------"<<endl;
-        cout<<"  READING RECOMBINATION SPECTRUM FILES "<<endl;
-        cout<<" --------------------------------------"<<endl<<endl;
-
-        for(int i=0;i<NoInPrefix;i++)
-        {
-            if(!InputData[i].LoadRecomSpectrum(InPrefixList[i].c_str()))
-                return false;
-
-        }
-        UpdateFlankFractions();
-
-        for(int i=0;i<NoInPrefix;i++)
-        {
-            InputData[i].PrintFlankLength();
-        }
-
-
-
-    }
-
-
-
-
-    LSQEstimates.resize(numHaplotypes);
-    ErrorPerSamplePerChunk.resize(numHaplotypes);
-    ErrorPerSample.resize(numHaplotypes,0.0);
-    ErrorSumSq=0.0;
-
-
-    cout<<"\n ---------------"<<endl;
-    cout<<"  CHUNK SUMMARY "<<endl;
-    cout<<" ---------------"<<endl<<endl;
-
-    CreateChunks();
-    if(!AnalyzeChunks())
-        return false;
-
-    cout<<" Total Sum of Squares for all Chunks = "<<ErrorSumSq<<endl;
-
-
-    return true;
-
-
-
-    for(int i=0;i<NoInPrefix;i++)
-    {
-        cout<<"\n ----------------------------"<<endl;
-        cout<<"       INPUT FILE : ["<<i+1<<"] "<<endl;
-        cout<<" ----------------------------"<<endl;
-
-        cout<<" File Prefix        : "<<InPrefixList[i] <<endl;
-
-//        CopyParameters(InputData[i]);
-
-//        if(!InputData[i].ReadInputFiles(InPrefixList[i]))
-//            return false;
-
-
-
-    }
-
-
-
-
-    return true;
-}
 
 
 
@@ -308,7 +781,7 @@ bool MetaMinimac::CreateChunks()
     ChunkList[0].StartBp=0;
     ChunkList[0].StartWithWindowIndex=0;
 
-    int tempNoChunkMarkers = (NoMarkers/NoChunks);
+    int tempNoChunkMarkers = (NoMarkers/NoChunks)+1;
     int tempNoWindowMarkers = tempNoChunkMarkers/10;
 
 
@@ -319,7 +792,6 @@ bool MetaMinimac::CreateChunks()
         ThisChunk &tempChunk = ChunkList[chunkCounter];
 
         tempChunk.EndWithWindowIndex=counter+tempNoChunkMarkers+tempNoWindowMarkers;
-        tempChunk.NoGenoAllStudies=tempChunk.EndWithWindowIndex-tempChunk.StartWithWindowIndex+1;
         tempChunk.ChunkNo=chunkCounter;
 
 
@@ -327,6 +799,7 @@ bool MetaMinimac::CreateChunks()
         {
             tempChunk.StartWithWindowIndex=counter - tempNoWindowMarkers;
         }
+        tempChunk.NoGenoAllStudies=tempChunk.EndWithWindowIndex-tempChunk.StartWithWindowIndex+1;
 
         if(chunkCounter<NoChunks-1)
         {
@@ -335,12 +808,14 @@ bool MetaMinimac::CreateChunks()
         }
         else
         {
-            tempChunk.EndBp=999999999;
+            tempChunk.EndBp=999999997;
             tempChunk.EndWithWindowIndex=NoCommonGenoVariants-1;
             tempChunk.NoGenoAllStudies=tempChunk.EndWithWindowIndex-tempChunk.StartWithWindowIndex+1;
         }
-
+        tempChunk.NoVariants=tempChunk.EndWithWindowIndex-tempChunk.StartWithWindowIndex+1;
         counter+=tempNoChunkMarkers;
+
+
         chunkCounter++;
 
     }
@@ -376,7 +851,8 @@ bool MetaMinimac::FindCommonGenotypedVariants()
 
     }
     NoCommonGenoVariants = CommonGenotypeVariantNameList.size();
-
+    CurrentMetaImputedDosage.resize(InputData[0].numHaplotypes);
+    CurrentMetaImputedDosageSum.resize(InputData[0].numHaplotypes);
 
 
     InputData[0].SortCommonGenotypeList(CommonGenotypeVariantNameList, SortedCommonGenoList, CommonTypedVariantList);
@@ -384,21 +860,8 @@ bool MetaMinimac::FindCommonGenotypedVariants()
     for(int i=1; i<NoInPrefix; i++)
         InputData[i].ReadBasedOnSortCommonGenotypeList(SortedCommonGenoList);
 
-//
-//
-//    std::cout << " Total Union Number of Variants                      : " << OutputData.numMarkers << endl;
-//
-//    int MultipleSitesCount=0;
-//
-//    for(int i=0;i<NoInPrefix;i++)
-//    {
-//        std::cout << " Total Number of Variants in "<<i+1<<" Studies               : "
-//                  << NoVariantsByCategory[i] << endl;
-//        if(i>0)
-//            MultipleSitesCount+=NoVariantsByCategory[i];
-//    }
-//    std::cout << " Total Number of Variants in more than one study     : " << MultipleSitesCount<< endl <<endl;
-
+    cout<<" -- Common  #Genotyped Sites = "<<NoCommonGenoVariants<<endl;
+    cout<<" -- Successful !!! "<<endl<<endl;
 }
 
 
@@ -576,6 +1039,110 @@ void MetaMinimac::PrintVCFHeader()
 }
 
 
+
+
+bool MetaMinimac::ReadInputFiles()
+{
+    cout<<"\n ----------------------------------"<<endl;
+    cout<<"  READING SAMPLE AND VARIANT NAMES "<<endl;
+    cout<<" ----------------------------------"<<endl<<endl;
+
+
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        //CopyParameters(InputData[i],InPrefixList[i]);
+        if(!InputData[i].LoadSampleNames(InPrefixList[i].c_str()))
+            return false;
+//        if(i>0)
+//            if(!InputData[i].CheckSampleConsistency(InputData[i-1].numSamples,
+//                                                       InputData[i-1].individualName,
+//                                                       InputData[i-1].SampleNoHaplotypes))
+//                return false;
+
+    }
+
+    cout<<"\n --------------------------------"<<endl;
+    cout<<"  FINDING COMMON SET OF VARIANTS "<<endl;
+    cout<<" --------------------------------"<<endl<<endl;
+
+    CopyParameters(InputData[0],OutputData);
+    MergeVariantList();
+
+    numHaplotypes=InputData[0].numHaplotypes;
+    finChromosome=InputData[0].VariantList[0].chr;
+    individualName=InputData[0].individualName;
+
+
+    if(Method!="A")
+    {
+
+        cout<<"\n --------------------------------------"<<endl;
+        cout<<"  READING RECOMBINATION SPECTRUM FILES "<<endl;
+        cout<<" --------------------------------------"<<endl<<endl;
+
+        for(int i=0;i<NoInPrefix;i++)
+        {
+            if(!InputData[i].LoadRecomSpectrum(InPrefixList[i].c_str()))
+                return false;
+
+        }
+        UpdateFlankFractions();
+
+        for(int i=0;i<NoInPrefix;i++)
+        {
+            InputData[i].PrintFlankLength();
+        }
+
+
+
+    }
+
+
+
+
+    LSQEstimates.resize(numHaplotypes);
+    ErrorPerSamplePerChunk.resize(numHaplotypes);
+    ErrorPerSample.resize(numHaplotypes,0.0);
+    ErrorSumSq=0.0;
+
+
+    cout<<"\n ---------------"<<endl;
+    cout<<"  CHUNK SUMMARY "<<endl;
+    cout<<" ---------------"<<endl<<endl;
+
+    CreateChunks();
+    if(!AnalyzeChunks())
+        return false;
+
+    cout<<" Total Sum of Squares for all Chunks = "<<ErrorSumSq<<endl;
+
+
+    return true;
+
+
+
+    for(int i=0;i<NoInPrefix;i++)
+    {
+        cout<<"\n ----------------------------"<<endl;
+        cout<<"       INPUT FILE : ["<<i+1<<"] "<<endl;
+        cout<<" ----------------------------"<<endl;
+
+        cout<<" File Prefix        : "<<InPrefixList[i] <<endl;
+
+//        CopyParameters(InputData[i]);
+
+//        if(!InputData[i].ReadInputFiles(InPrefixList[i]))
+//            return false;
+
+
+
+    }
+
+
+
+
+    return true;
+}
 
 
 void MetaMinimac::PrintVCFChunk(ThisChunk &MyChunk)

@@ -17,6 +17,7 @@ int main(int argc, char ** argv)
 {
 	// Parameter Options
 	myUserVariables MyVariables;
+    bool log = false, help = false, params = false;
 
 	ParameterList inputParameters;
 	PhoneHome::allThinning = 50;
@@ -26,35 +27,39 @@ int main(int argc, char ** argv)
 		LONG_STRINGPARAMETER("input", &MyVariables.inputFiles)
 		LONG_PARAMETER_GROUP("Output Parameters")
 		LONG_STRINGPARAMETER("prefix", &MyVariables.outfile)
-		LONG_STRINGPARAMETER("format", &MyVariables.format)
+        LONG_STRINGPARAMETER("format", &MyVariables.formatString)
+        LONG_PARAMETER("skipInfo", &MyVariables.infoDetails)
 		LONG_PARAMETER("nobgzip", &MyVariables.nobgzip)
 		LONG_PARAMETER_GROUP("Other Parameters")
         LONG_DOUBLEPARAMETER("chunkLengthMb", &MyVariables.chunkLength)
         LONG_INTPARAMETER("window", &MyVariables.window)
 		LONG_INTPARAMETER("overlap", &MyVariables.overlap)
-		LONG_PARAMETER("help", &MyVariables.help)
-		LONG_PARAMETER("log", &MyVariables.log)
-		LONG_PARAMETER("params", &MyVariables.params)
+		LONG_PARAMETER("help", &help)
+		LONG_PARAMETER("log", &log)
+		LONG_PARAMETER("params", &params)
 		LONG_PHONEHOME(VERSION)
 		BEGIN_LEGACY_PARAMETERS()
-		LONG_STRINGPARAMETER("method", &MyVariables.method)
+        LONG_INTPARAMETER("vcfPrintBuffer", &MyVariables.PrintBuffer)
+        LONG_STRINGPARAMETER("method", &MyVariables.method)
 		LONG_DOUBLEPARAMETER("switchLimit", &MyVariables.switchLimit)
 		END_LONG_PARAMETERS();
 
     int start_time = time(0);
-	inputParameters.Add(new LongParameters(" Command Line Options: ",longParameterList));
-	FILE *LogFile=NULL;
-	dup2(fileno(stdout), fileno(stderr));
-	MetaMinimacVersion();
+    MyVariables.CreateCommandLine(argc,argv);
+    inputParameters.Add(new LongParameters(" Command Line Options: ",longParameterList));
+
     String compStatus;
-	inputParameters.Read(argc, &(argv[0]));
-
-	if(MyVariables.log)
-		LogFile=freopen(MyVariables.outfile+".logfile","w",stdout);
+    inputParameters.Read(argc, &(argv[0]));
 
 
+    FILE *LogFile=NULL;
+    if(log)
+        LogFile=freopen(MyVariables.outfile +".logfile","w",stdout);
+    dup2(fileno(stdout), fileno(stderr));
 
-	if (MyVariables.help)
+
+    MetaMinimacVersion();
+	if (help)
 	{
 		helpFile();
 		return(-1);

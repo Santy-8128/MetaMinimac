@@ -168,6 +168,31 @@ bool HaplotypeSet::LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype,int &numRe
 }
 
 
+bool HaplotypeSet::LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype)
+{
+    for (int i = 0; i<(numSamples); i++)
+    {
+        string temp=*ThisGenotype.getString("HDS",i);
+        char *end_str;
+
+        if(SampleNoHaplotypes[i]==2) {
+            char *pch = strtok_r((char *) temp.c_str(), ",", &end_str);
+            CurrentHapDosage[2*i] = atof(pch);
+
+            pch = strtok_r(NULL, "\t", &end_str);
+            CurrentHapDosage[2*i+1] = atof(pch);
+        }
+        else
+        {
+            CurrentHapDosage[2*i] = atof(temp.c_str());
+        }
+
+    }
+}
+
+
+
+
 
 bool HaplotypeSet::LoadLooVariant(VcfRecordGenotype &ThisGenotype,int loonumReadRecords)
 {
@@ -179,23 +204,23 @@ bool HaplotypeSet::LoadLooVariant(VcfRecordGenotype &ThisGenotype,int loonumRead
         {
             char *end_str;
             char *pch = strtok_r((char *) temp.c_str(), "|", &end_str);
-            LooDosage[looCounter][loonumReadRecords] = atof(pch);
+            LooDosage[2*i][loonumReadRecords] = atof(pch);
             pch = strtok_r(NULL, "\t", &end_str);
-            LooDosage[looCounter + 1][loonumReadRecords] = atof(pch);
+            LooDosage[2*i + 1][loonumReadRecords] = atof(pch);
 
 
             temp = *ThisGenotype.getString("GT", i);
             char *end_str1;
             char *pch1 = strtok_r((char *) temp.c_str(), "|", &end_str1);
-            TypedGT[looCounter++][loonumReadRecords] = atof(pch1);
+            TypedGT[2*i][loonumReadRecords] = atof(pch1);
             pch1 = strtok_r(NULL, "\t", &end_str1);
-            TypedGT[looCounter++][loonumReadRecords] = atof(pch1);
+            TypedGT[2*i][loonumReadRecords] = atof(pch1);
         }
         else
         {
-            LooDosage[looCounter + 1][loonumReadRecords] = atof(temp.c_str());
+            LooDosage[2*i][loonumReadRecords] = atof(temp.c_str());
             temp = *ThisGenotype.getString("GT", i);
-            TypedGT[looCounter++][loonumReadRecords] = atof(temp.c_str());
+            TypedGT[2*i][loonumReadRecords] = atof(temp.c_str());
 
         }
     }
@@ -747,6 +772,7 @@ bool HaplotypeSet::CheckSuffixFile(string prefix, const char* suffix, string &Fi
 }
 
 
+
 bool HaplotypeSet::CheckSampleConsistency(int tempNoSamples,
                                           vector<string> &tempindividualName,
                                           vector<int> tempSampleNoHaplotypes,
@@ -836,6 +862,7 @@ void HaplotypeSet::SortCommonGenotypeList(std::unordered_set<string> &CommonGeno
     CommonTypedVariantList.resize(CommonGenotypeVariantNameList.size());
     LooDosage.clear();
     TypedGT.clear();
+    CurrentHapDosage.resize(numHaplotypes);
     LooDosage.resize(numHaplotypes);
     TypedGT.resize(numHaplotypes);
     for(int i=0; i<numHaplotypes; i++)
@@ -890,6 +917,7 @@ void HaplotypeSet::ReadBasedOnSortCommonGenotypeList(vector<string> &SortedCommo
 
     LooDosage.clear();
     TypedGT.clear();
+    CurrentHapDosage.resize(numHaplotypes);
     LooDosage.resize(numHaplotypes);
     TypedGT.resize(numHaplotypes);
     for(int i=0; i<numHaplotypes; i++)
