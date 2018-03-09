@@ -2,7 +2,14 @@
 
 #include <iostream>
 #include <ctime>
+#include <unistd.h>
 #include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <getopt.h>
 #include "Parameters.h"
 #include "StringBasics.h"
 #include "MetaMinimac.h"
@@ -22,41 +29,48 @@ int main(int argc, char ** argv)
 	ParameterList inputParameters;
 	PhoneHome::allThinning = 50;
 
-	BEGIN_LONG_PARAMETERS(longParameterList)
-		LONG_PARAMETER_GROUP("Input Files")
-		LONG_STRINGPARAMETER("input", &MyVariables.inputFiles)
-		LONG_PARAMETER_GROUP("Output Parameters")
-		LONG_STRINGPARAMETER("prefix", &MyVariables.outfile)
-        LONG_STRINGPARAMETER("format", &MyVariables.formatString)
-        LONG_PARAMETER("skipInfo", &MyVariables.infoDetails)
-		LONG_PARAMETER("nobgzip", &MyVariables.nobgzip)
-		LONG_PARAMETER_GROUP("Other Parameters")
-        LONG_DOUBLEPARAMETER("chunkLengthMb", &MyVariables.chunkLength)
-        LONG_INTPARAMETER("window", &MyVariables.window)
-		LONG_INTPARAMETER("overlap", &MyVariables.overlap)
-		LONG_PARAMETER("help", &help)
-		LONG_PARAMETER("log", &log)
-		LONG_PARAMETER("params", &params)
-		LONG_PHONEHOME(VERSION)
-		BEGIN_LEGACY_PARAMETERS()
-        LONG_INTPARAMETER("vcfPrintBuffer", &MyVariables.PrintBuffer)
-        LONG_STRINGPARAMETER("method", &MyVariables.method)
-		LONG_DOUBLEPARAMETER("switchLimit", &MyVariables.switchLimit)
-		END_LONG_PARAMETERS();
+    int c;
+    static struct option loptions[] =
+    {
+            {"input",required_argument,NULL,'i'},
+            {"output",required_argument,NULL,'p'},
+            {"format",required_argument,NULL,'f'},
+            {"skipInfo",no_argument,NULL,'s'},
+            {"nobgzip",no_argument,NULL,'n'},
+            {"window",required_argument,NULL,'w'},
+            {"overlap",required_argument,NULL,'o'},
+            {"help",no_argument,NULL,'h'},
+            {"log",no_argument,NULL,'l'},
+            {"params",no_argument,NULL,'c'},
+            {NULL,0,NULL,0}
+    };
+
+    while ((c = getopt_long(argc, argv, "i:p:f:w:o:snhlc",loptions,NULL)) >= 0)
+    {
+        switch (c) {
+            case 'i': MyVariables.inputFiles = optarg; break;
+            case 'p': MyVariables.outfile = optarg; break;
+            case 'f': MyVariables.formatString = optarg; break;
+            case 'w': MyVariables.window = atoi(optarg); break;
+            case 'o': MyVariables.overlap = atoi(optarg); break;
+            case 'n': MyVariables.nobgzip=true; break;
+            case 's': MyVariables.infoDetails=false; break;
+            case 'h': help=true; break;
+            case 'l': log=true; break;
+            case 'c': params=true; break;
+            case '?': helpFile(); return 1; break;
+            default:  printf("[ERROR:] Unknown argument: %s\n", optarg);
+        }
+    }
 
     int start_time = time(0);
     MyVariables.CreateCommandLine(argc,argv);
-    inputParameters.Add(new LongParameters(" Command Line Options: ",longParameterList));
 
     String compStatus;
-    inputParameters.Read(argc, &(argv[0]));
-
-
     FILE *LogFile=NULL;
     if(log)
         LogFile=freopen(MyVariables.outfile +".logfile","w",stdout);
     dup2(fileno(stdout), fileno(stderr));
-
 
     MetaMinimacVersion();
 	if (help)
@@ -65,13 +79,10 @@ int main(int argc, char ** argv)
 		return(-1);
 	}
 
-	inputParameters.Status();
-
-
-	MetaMinimac inputData;
+	MetaMinimac myAnalysis;
 	String MySuccessStatus="Error";
 
-	MySuccessStatus = inputData.AnalyzeExperiment(MyVariables);
+	MySuccessStatus = myAnalysis.AnalyzeExperiment(MyVariables);
 
 
 	if(MySuccessStatus!="Success")
@@ -102,25 +113,6 @@ int main(int argc, char ** argv)
 
 	return 0;
 
-//
-//    MetaMinimac inputData(inputFiles,outfile,gzip,format,window,overlap,switchLimit,method);
-
-
-//
-//	if (!inputData.MergeDosageData())
-//	{
-//		cout << "\n Program Exiting ... \n\n";
-//		compStatus="Analysis.Error";
-//        PhoneHome::completionStatus(compStatus.c_str());
-//        return(-1);
-//
-//	}
-
-
-
-
-
-
 }
 
 
@@ -128,40 +120,30 @@ int main(int argc, char ** argv)
 
 void MetaMinimacVersion()
 {
-	printf("\n\n -------------------------------------------------------------------------------- \n");
-	printf("          MetaMinimac - Converting Dosage from Minimac3 to other Formats     \n");
-	printf(" --------------------------------------------------------------------------------\n");
-    printf(" (c) 2016 - Sayantan Das \n");
-	cout<< " Version: " << VERSION<< ";\n Built: " << DATE << " by " << USER << std::endl;
+	printf("\n\n -------------------------------------------------- \n");
+	printf("                   MetaMinimac     \n");
+	printf(" --------------------------------------------------\n");
+    printf(" (c) 2018 - Sayantan Das \n");
+	cout<< " Version : " << VERSION<< ";\n Built   : " << DATE << " by " << USER << std::endl;
 }
 
 void helpFile()
 {
-
-  printf("\n URL = http://genome.sph.umich.edu/wiki/MetaMinimac\n");
-  printf(" GIT = https://github.com/Santy-8128/MetaMinimac\n");
-
-
-    printf("\n MetaMinimac converts dosage files from minimac3 to other formats.\n");
-
-
-	printf("\n Usage: ./MetaMinimac  --inDose      TestDataImputedVCF.dose.vcf.gz");
-	printf("\n                           --info         TestDataImputedVCF.info");
-	printf("\n                           --prefix       OutputFilePrefix");
-	printf("\n                           --type         plink OR mach   // depending on output format");
-	printf("\n                           --format       DS or GP        // based on if you want to output");
-	printf("\n                                                          // dosage (DS) or genotype prob (GP)");
-    printf("\n                           --window       1000000           // Number of Markers to import and ");
-	printf("\n                                                          // print at a time (valid only for ");
-	printf("\n                                                          // MaCH format)");
-    printf("\n                           --idDelimiter  _               // Delimiter to Split VCF Sample ID into");
-	printf("\n                                                          // FID and IID for PLINK format ");
-
-    printf("\n\n URL = http://genome.sph.umich.edu/wiki/MetaMinimac\n");
+    printf( "\n About   : Combine GWAS data imputed against different panels  \n");
+    printf( " Usage   : metaMinimac [options] \n");
+    printf( "\n");
+    printf( " Options :\n");
+    printf( "   -i, --input  <prefix1 prefix2 ...>  Prefixes of input data to meta-impute\n");
+    printf( "   -o, --output <prefix>               Output prefix [MetaMinimac.Output] \n");
+    printf( "   -f, --format <string>               Comma separated FORMAT tags [GT,DS]\n");
+    printf( "   -s, --skipInfo                      Skip INFO in output [FALSE] \n");
+    printf( "   -n, --nobgzip                       Output unzipped file [FALSE]\n");
+    printf( "   -b, --buffer                        Print Buffer [1e8] \n");
+    printf("\n URL = http://genome.sph.umich.edu/wiki/MetaMinimac\n");
     printf(" GIT = https://github.com/Santy-8128/MetaMinimac\n");
-  printf("\n Visit website for more details ...\n");
+    printf("\n Visit website for more details ...\n");
 
-cout<<endl<<endl;
+    cout<<endl<<endl;
 	return;
 }
 

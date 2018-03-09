@@ -764,7 +764,7 @@ bool HaplotypeSet::CheckSuffixFile(string prefix, const char* suffix, string &Fi
         FinalName=prefix+"."+suffix+".vcf.gz";
     else
     {
-        cout<<"\n No VCF file found ("<<prefix<<"."<<suffix<<"dose.vcf or "<<prefix+"."<<suffix<<".vcf.gz) "<<endl;
+        cout<<"\n No VCF file found ("<<prefix<<"."<<suffix<<".vcf or "<<prefix+"."<<suffix<<".vcf.gz) "<<endl;
         cout<<" Please check input file prefix ["<< prefix <<"] properly ... "<<endl;
         return false;
     }

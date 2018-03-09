@@ -206,7 +206,6 @@ double LeastSquareError::initialize(int SampleId, vector<HaplotypeSet> &InputDat
                                     MetaMinimac *const ThisStudy,ThisChunk &MyChunk)
 {
 
-    Method=ThisStudy->Method;
     NoStudies=InputData.size();
     NoDimensions=NoStudies-1;
     NoMarkers=MyChunk.NoGenoAllStudies;
@@ -276,7 +275,6 @@ double LogOddsModel::initialize(int SampleId, vector<HaplotypeSet> &InputData,
                                     MetaMinimac *const ThisStudy,ThisChunk &MyChunk)
 {
 
-    Method=ThisStudy->Method;
     NoStudies=InputData.size();
 
     if(Method=="A")
@@ -438,7 +436,6 @@ double LeastSquareWithRecombination::initialize(int SampleId, vector<HaplotypeSe
                                     MetaMinimac *const ThisStudy,ThisChunk &MyChunk)
 {
 
-    Method=ThisStudy->Method;
     NoStudies=InputData.size();
     NoDimensions=NoStudies; // 1 extra for the flank-Length parameter
     NoMarkers=MyChunk.NoGenoAllStudies;

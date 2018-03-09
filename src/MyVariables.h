@@ -23,6 +23,7 @@ class myUserVariables
         bool GT,DS,GP,HDS,SD;
         char* MyCommandLine;
         string CommandLine;
+        String formatStringForVCF;
 
     myUserVariables()
     {
@@ -38,7 +39,7 @@ class myUserVariables
         HDS=false;
         SD=false;
         infoDetails=true;
-
+        formatStringForVCF="";
         window=5000000;
         overlap=100000;
         switchLimit=0.1;
@@ -82,12 +83,40 @@ class myUserVariables
             }
             else
             {
-                cout << " ERROR !!! \n Cannot identify handle for \"--format\" parameter : "<<formatPiece<<endl;
+                cout << " ERROR !!! \n Cannot identify handle for -f [--format] parameter : "<<formatPiece<<endl;
                 cout << " Available handles GT, DS, HDS and GP (for genotype, dosage, haplotype dosage and posterior probability). \n\n";
                 cout<<" Program Exiting ..."<<endl<<endl;
                 return false;
             }
         }
+
+        bool colonIndex=false;
+        if(GT)
+        {
+            formatStringForVCF+="GT";
+            colonIndex=true;
+        }
+        if(DS)
+        {
+            formatStringForVCF+= (colonIndex?":DS":"DS");
+            colonIndex=true;
+        }
+        if(HDS)
+        {
+            formatStringForVCF+= (colonIndex?":HDS":"HDS");
+            colonIndex=true;
+        }
+        if(GP)
+        {
+            formatStringForVCF+= (colonIndex?":GP":"GP");
+            colonIndex=true;
+        }
+        if(SD)
+        {
+            formatStringForVCF+= (colonIndex?":SD":"SD");
+            colonIndex=true;
+        }
+
 
         if(nobgzip)
             gzip=false;
@@ -95,35 +124,35 @@ class myUserVariables
 
         if (inputFiles == "")
         {
-            cout<< " Missing \"--inputFiles\", a required parameter.\n\n";
-            cout<< " Try \"--help\" for usage ...\n\n";
+            cout<< " Missing -i [--input], a required parameter.\n\n";
+            cout<< " Try -h [--help] for usage ...\n\n";
             cout<< " Program Exiting ...\n\n";
             return false;
         }
 
         if(PrintBuffer<=100)
         {
-            cout << " ERROR !!! \n Invalid input for \"--PrintBuffer\" = "<<PrintBuffer<<"\n";;
+            cout << " ERROR !!! \n Invalid input for -b [--buffer] = "<<PrintBuffer<<"\n";;
             cout << " Buffer for writing output files should be at least 1,000 characters long !!! \n\n";
-            cout<< " Try \"--help\" for usage ...\n\n";
+            cout<< " Try -h [--help] for usage ...\n\n";
             cout<<  " Program Exiting ..."<<endl<<endl;
             return false;
         }
 
         if(window<=0)
         {
-            cout<< " Invalid input for parameter \"--window\" : "<<window<<endl;
-            cout<< " \"--window\"  can only take Positive Integers ...\n";
-            cout<< " Try \"--help\" for usage ...\n\n";
+            cout<< " Invalid input for parameter -w [--window] : "<<window<<endl;
+            cout<< " --window  can only take Positive Integers ...\n";
+            cout<< " Try -h [--help] for usage ...\n\n";
             cout<< " Program Exiting ...\n\n";
             return false;
         }
 
         if(overlap<=0)
         {
-            cout<< " Invalid input for parameter \"--overlap\" : "<<overlap<<endl;
-            cout<< " \"--overlap\"  can only take Positive Integers ...\n";
-            cout<< " Try \"--help\" for usage ...\n\n";
+            cout<< " Invalid input for parameter -o [--overlap] : "<<overlap<<endl;
+            cout<< " --overlap  can only take Positive Integers ...\n";
+            cout<< " Try -h [-h [--help]] for usage ...\n\n";
             cout<< " Program Exiting ...\n\n";
             return false;
         }
