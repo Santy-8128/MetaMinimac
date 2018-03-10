@@ -266,6 +266,23 @@ void MetaMinimac::PrintChunkInformation()
     cout<<endl<<endl;
 }
 
+
+void MetaMinimac::Initialize()
+{
+    LSQEstimates.resize(InputData[0].numHaplotypes);
+
+    for (int j = 0; j < InputData[0].numHaplotypes; j++) {
+        LSQEstimates[j].resize(NoInPrefix);
+    }
+
+  if(ThisVariable.debug)
+  {
+      ErrorPerSamplePerChunk.resize(InputData[0].numHaplotypes);
+      ErrorPerSample.resize(InputData[0].numHaplotypes, 0.0);
+  }
+
+}
+
 String MetaMinimac::PerformFinalAnalysis()
 {
 
@@ -274,39 +291,29 @@ String MetaMinimac::PerformFinalAnalysis()
     cout << "                           META-IMPUTATION ANALYSIS                            " << endl;
     cout << " ------------------------------------------------------------------------------" << endl;
 
+    Initialize();
 
-    LSQEstimates.resize(InputData[0].numHaplotypes);
-
-    for (int j = 0; j < InputData[0].numHaplotypes; j++) {
-        LSQEstimates[j].resize(NoInPrefix);
-    }
-
-//  ErrorPerSamplePerChunk.resize(InputData[0].numHaplotypes);
-//  ErrorPerSample.resize(InputData[0].numHaplotypes,0.0);
-
-    for (int i = 0; i < NoChunks; i++) {
+       for (int i = 0; i < NoChunks; i++) {
         cout << "\n -------------------------------------------" << endl;
         cout << " Analyzing Chunk " << i + 1 << "/" << NoChunks << " [" << CommonTypedVariantList[0].chr << ":";
         cout << CommonTypedVariantList[ChunkList[i].StartWithWindowIndex].bp << "-";
         cout << CommonTypedVariantList[ChunkList[i].EndWithWindowIndex].bp << "]" << endl;
         cout << " -------------------------------------------" << endl;
 
-
-        for (int j = 0; j < InputData[0].numSamples; j++) {
-            if (InputData[0].SampleNoHaplotypes[i] == 2) {
-
+        for (int j = 0; j < InputData[0].numSamples; j++)
+        {
+            if (InputData[0].SampleNoHaplotypes[i] == 2)
+            {
                 GetMetaImpEstimates(2 * j, ChunkList[i]);
                 GetMetaImpEstimates(2 * j + 1, ChunkList[i]);
-            } else
+            }
+            else
                 GetMetaImpEstimates(2 * j, ChunkList[i]);
         }
 
-
-        AppendtoMainVcfFaster(i, 200);
-
-        int h = 0;
-
+        AppendtoMainVcfFaster(i);
     }
+
     for (int i = 0; i < NoInPrefix; i++) {
         delete InputDosageStream[i];
         delete CurrentRecordFromStudy[i];
@@ -326,12 +333,15 @@ void MetaMinimac::GetMetaImpEstimates(int Sample, ThisChunk &MyChunk)
 
     ThisSampleAnalysis.metaInitialize(Sample, InputData, this, MyChunk);
     vector<double> init(NoInPrefix-1, 0.0);
-    vector<double> MiniMizer=Simplex(ThisSampleAnalysis, init);
-    logitTransform(MiniMizer,LSQEstimates[Sample]);
+    vector<double> MiniMizer = Simplex(ThisSampleAnalysis, init);
+    logitTransform(MiniMizer, LSQEstimates[Sample]);
 
-//        ErrorPerSamplePerChunk[Sample]=ThisSampleAnalysis(LSQEstimates[Sample]);
-//        ErrorPerSample[Sample]+=ErrorPerSamplePerChunk[Sample];
-//        ErrorSumSqPerChunk+=ErrorPerSamplePerChunk[Sample];
+    if(ThisVariable.debug)
+    {
+        ErrorPerSamplePerChunk[Sample]=ThisSampleAnalysis(LSQEstimates[Sample]);
+        ErrorPerSample[Sample]+=ErrorPerSamplePerChunk[Sample];
+        ErrorSumSqPerChunk+=ErrorPerSamplePerChunk[Sample];
+    }
 }
 
 void MetaMinimac::OpenStreamInputDosageFiles()
@@ -536,7 +546,7 @@ string MetaMinimac::CreateInfo()
     }
     freq/=InputData[0].numHaplotypes;
     double maf=freq > 0.5 ? 1.0 - freq : freq;
-    ss<<"\tAF="<< fixed << setprecision(5) <<freq<<";MAF=";
+    ss<<"AF="<< fixed << setprecision(5) <<freq<<";MAF=";
     ss<<fixed << setprecision(5) << maf;
     ss<<";";
 
@@ -829,7 +839,7 @@ void MetaMinimac::CreateMetaImputedData()
 
 }
 
-void MetaMinimac::AppendtoMainVcfFaster(int ChunkNo, int MaxIndex)
+void MetaMinimac::AppendtoMainVcfFaster(int ChunkNo)
 {
     VcfPrintStringPointerLength=0;
 

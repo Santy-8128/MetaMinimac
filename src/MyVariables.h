@@ -9,11 +9,7 @@ class myUserVariables
 {
     public:
         String inputFiles;
-        String info;
         String outfile;
-        String method;
-        int window,overlap;
-        double switchLimit;
         String FileDelimiter;
         double chunkLength;
         int PrintBuffer;
@@ -21,28 +17,24 @@ class myUserVariables
         bool  gzip, nobgzip;
         String formatString;
         bool GT,DS,GP,HDS,SD;
-        char* MyCommandLine;
         string CommandLine;
         String formatStringForVCF;
+        bool debug;
 
     myUserVariables()
     {
         FileDelimiter=":";
         inputFiles = "";
-        info = "";
         outfile = "MetaMinimac.Output";
-        method="B";
         formatString = "GT,DS";
         GT=false;
         DS=false;
         GP=false;
         HDS=false;
         SD=false;
+        debug=false;
         infoDetails=true;
         formatStringForVCF="";
-        window=5000000;
-        overlap=100000;
-        switchLimit=0.1;
         gzip = true;
         nobgzip = false;
         chunkLength=10;
@@ -139,20 +131,12 @@ class myUserVariables
             return false;
         }
 
-        if(window<=0)
-        {
-            cout<< " Invalid input for parameter -w [--window] : "<<window<<endl;
-            cout<< " --window  can only take Positive Integers ...\n";
-            cout<< " Try -h [--help] for usage ...\n\n";
-            cout<< " Program Exiting ...\n\n";
-            return false;
-        }
 
-        if(overlap<=0)
+        if(chunkLength<=0)
         {
-            cout<< " Invalid input for parameter -o [--overlap] : "<<overlap<<endl;
+            cout<< " Invalid input for parameter -c [--chunkLength] : "<<chunkLength<<endl;
             cout<< " --overlap  can only take Positive Integers ...\n";
-            cout<< " Try -h [-h [--help]] for usage ...\n\n";
+            cout<< " Try -h [--help] for usage ...\n\n";
             cout<< " Program Exiting ...\n\n";
             return false;
         }

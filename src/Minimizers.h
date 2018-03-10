@@ -368,8 +368,6 @@ double LogOddsModel::metaInitialize(int SampleId, vector<HaplotypeSet> &InputDat
 {
 
     NoStudies=InputData.size();
-
-
     NoParams=NoStudies;
     NoDimensions=NoStudies;
 

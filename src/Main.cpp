@@ -37,27 +37,25 @@ int main(int argc, char ** argv)
             {"format",required_argument,NULL,'f'},
             {"skipInfo",no_argument,NULL,'s'},
             {"nobgzip",no_argument,NULL,'n'},
-            {"window",required_argument,NULL,'w'},
-            {"overlap",required_argument,NULL,'o'},
+            {"chunkLength",required_argument,NULL,'c'},
             {"help",no_argument,NULL,'h'},
             {"log",no_argument,NULL,'l'},
-            {"params",no_argument,NULL,'c'},
+            {"debug",no_argument,NULL,'d'},
             {NULL,0,NULL,0}
     };
 
-    while ((c = getopt_long(argc, argv, "i:p:f:w:o:snhlc",loptions,NULL)) >= 0)
+    while ((c = getopt_long(argc, argv, "i:p:f:c:snhld",loptions,NULL)) >= 0)
     {
         switch (c) {
             case 'i': MyVariables.inputFiles = optarg; break;
             case 'p': MyVariables.outfile = optarg; break;
             case 'f': MyVariables.formatString = optarg; break;
-            case 'w': MyVariables.window = atoi(optarg); break;
-            case 'o': MyVariables.overlap = atoi(optarg); break;
+            case 'c': MyVariables.chunkLength = atoi(optarg); break;
             case 'n': MyVariables.nobgzip=true; break;
             case 's': MyVariables.infoDetails=false; break;
+            case 'd': MyVariables.debug=true; break;
             case 'h': help=true; break;
             case 'l': log=true; break;
-            case 'c': params=true; break;
             case '?': helpFile(); return 1; break;
             default:  printf("[ERROR:] Unknown argument: %s\n", optarg);
         }
@@ -138,7 +136,9 @@ void helpFile()
     printf( "   -f, --format <string>               Comma separated FORMAT tags [GT,DS]\n");
     printf( "   -s, --skipInfo                      Skip INFO in output [FALSE] \n");
     printf( "   -n, --nobgzip                       Output unzipped file [FALSE]\n");
+    printf( "   -c, --chunkLength                   Length of chunk in mb [10] \n");
     printf( "   -b, --buffer                        Print Buffer [1e8] \n");
+    printf( "   -d, --debug                         Debug mode [FALSE] \n");
     printf("\n URL = http://genome.sph.umich.edu/wiki/MetaMinimac\n");
     printf(" GIT = https://github.com/Santy-8128/MetaMinimac\n");
     printf("\n Visit website for more details ...\n");

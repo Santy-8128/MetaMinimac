@@ -34,11 +34,13 @@ class MetaMinimac
         int NoInPrefix;
         vector<HaplotypeSet> InputData;
 
+
         // Variables for Common Typed Sites
         vector<variant> CommonTypedVariantList;
         int CommonTypedVariantListCounter;
         vector<string> SortedCommonGenoList;
         int NoCommonGenoVariants;
+
 
         // Variables for Chunking
         int NoChunks;
@@ -93,8 +95,9 @@ class MetaMinimac
     void        PrintHaploidDosage              (float &x);
     void        PrintDiploidDosage              (float &x, float &y);
     void        PrintVariant                    (VcfRecord *temp);
-    void        AppendtoMainVcfFaster           (int ChunkNo, int MaxIndex);
+    void        AppendtoMainVcfFaster           (int ChunkNo);
     void        UpdateCurrentRecords            ();
+    void        Initialize                      ();
     void        FindCurrentMinimumPosition      ();
     string      CreateInfo                      ();
                 MetaMinimac                     (){}
