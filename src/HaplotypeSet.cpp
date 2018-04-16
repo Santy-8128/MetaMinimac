@@ -129,6 +129,8 @@ void HaplotypeSet::LoadVariantList(string FileName)
     {
         ++numReadRecords;
 
+        if(numReadRecords==1)
+            finChromosome=record.getChromStr();
         variant tempVariant;
         tempVariant.chr=record.getChromStr();
         tempVariant.bp=record.get1BasedPosition();

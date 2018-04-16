@@ -48,7 +48,7 @@ class MetaMinimac
 
 
         // Variables for output dosage file stream
-        IFILE vcfdosepartial;
+        IFILE vcfdosepartial, metaWeight;
         char *VcfPrintStringPointer;
         int VcfPrintStringPointerLength;
 
@@ -96,9 +96,11 @@ class MetaMinimac
     void        PrintDiploidDosage              (float &x, float &y);
     void        PrintVariant                    (VcfRecord *temp);
     void        AppendtoMainVcfFaster           (int ChunkNo);
+    void        AppendtoMainWeightsFile           (int ChunkNo);
     void        UpdateCurrentRecords            ();
     void        Initialize                      ();
     void        FindCurrentMinimumPosition      ();
+    void        PrintWeightForHaplotype         (int haploId);
     string      CreateInfo                      ();
                 MetaMinimac                     (){}
 

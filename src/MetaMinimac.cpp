@@ -302,7 +302,7 @@ String MetaMinimac::PerformFinalAnalysis()
 
         for (int j = 0; j < InputData[0].numSamples; j++)
         {
-            if (InputData[0].SampleNoHaplotypes[i] == 2)
+            if (InputData[0].SampleNoHaplotypes[j] == 2)
             {
                 GetMetaImpEstimates(2 * j, ChunkList[i]);
                 GetMetaImpEstimates(2 * j + 1, ChunkList[i]);
@@ -311,7 +311,11 @@ String MetaMinimac::PerformFinalAnalysis()
                 GetMetaImpEstimates(2 * j, ChunkList[i]);
         }
 
-        AppendtoMainVcfFaster(i);
+       AppendtoMainVcfFaster(i);
+
+       if(ThisVariable.debug)
+           AppendtoMainWeightsFile(i);
+
     }
 
     for (int i = 0; i < NoInPrefix; i++) {
@@ -416,6 +420,38 @@ bool MetaMinimac::OpenStreamOutputDosageFiles()
     }
     ifprintf(vcfdosepartial,"\n");
     ifclose(vcfdosepartial);
+
+
+    if(ThisVariable.debug)
+    {
+        metaWeight = ifopen(ThisVariable.outfile + ".metaWeights.vcf" + (gzip ? ".gz" : ""), "wb", gzip ?InputFile::BGZF:InputFile::UNCOMPRESSED);
+        if(metaWeight==NULL)
+        {
+            cout <<"\n\n ERROR !!! \n Could NOT create the following file : "<< ThisVariable.outfile + ".metaWeights.vcf" + (gzip ? ".gz" : "") <<endl;
+            return false;
+        }
+        ifprintf(metaWeight,"##fileformat=NA\n");
+        time_t t = time(0);
+        struct tm * now = localtime( & t );
+        ifprintf(metaWeight,"##filedate=%d.%d.%d\n",(now->tm_year + 1900),(now->tm_mon + 1) ,now->tm_mday);
+        ifprintf(metaWeight,"##source=MetaMinimac.v%s\n",VERSION);
+        ifprintf(metaWeight,"##contig=<ID=%s>\n",InputData[0].finChromosome.c_str());
+        ifprintf(metaWeight,"##INFO=<ID=AF,Number=1,Type=Float,Description=\"Estimated Alternate Allele Frequency\">\n");
+        ifprintf(metaWeight,"##INFO=<ID=MAF,Number=1,Type=Float,Description=\"Estimated Minor Allele Frequency\">\n");
+        ifprintf(metaWeight,"##metaMinimac_Command=%s\n",ThisVariable.CommandLine.c_str());
+
+        ifprintf(metaWeight,"#CHUNK");
+
+        for(int Id=0;Id<InputData[0].numSamples;Id++)
+        {
+            ifprintf(metaWeight,"\t%s",InputData[0].individualName[Id].c_str());
+        }
+        ifprintf(metaWeight,"\n");
+        ifclose(metaWeight);
+
+    }
+
+
     return true;
 }
 
@@ -844,6 +880,7 @@ void MetaMinimac::AppendtoMainVcfFaster(int ChunkNo)
     VcfPrintStringPointerLength=0;
 
     vcfdosepartial = ifopen(ThisVariable.outfile + ".metaDose.vcf" + (ThisVariable.gzip ? ".gz" : ""), "a", ThisVariable.gzip ?InputFile::BGZF:InputFile::UNCOMPRESSED);
+
     do
     {
         FindCurrentMinimumPosition();
@@ -856,7 +893,47 @@ void MetaMinimac::AppendtoMainVcfFaster(int ChunkNo)
         UpdateCurrentRecords();
     }while(true);
 
+
     ifprintf(vcfdosepartial,"%s",VcfPrintStringPointer);
     ifclose(vcfdosepartial);
     int h=0;
 }
+
+
+
+
+void MetaMinimac::AppendtoMainWeightsFile(int ChunkNo)
+{
+    VcfPrintStringPointerLength=0;
+
+    metaWeight = ifopen(ThisVariable.outfile + ".metaWeights.vcf" + (ThisVariable.gzip ? ".gz" : ""), "a", ThisVariable.gzip ?InputFile::BGZF:InputFile::UNCOMPRESSED);
+    ifprintf(metaWeight,"Chunk_%d",ChunkNo);
+
+    for (int j = 0; j < InputData[0].numSamples; j++)
+    {
+        ifprintf(metaWeight,"\t");
+        if (InputData[0].SampleNoHaplotypes[j] == 2)
+        {
+            PrintWeightForHaplotype(2*j);
+            ifprintf(metaWeight,"|");
+            PrintWeightForHaplotype(2*j+1);
+        }
+        else
+            PrintWeightForHaplotype(2*j);
+    }
+
+    ifprintf(metaWeight,"\n");
+    ifclose(metaWeight);
+}
+
+
+
+void MetaMinimac::PrintWeightForHaplotype(int haploId)
+{
+
+    ifprintf(metaWeight,"%0.5f",LSQEstimates[haploId][0]);
+    for(int i=1;i<NoInPrefix;i++)
+        ifprintf(metaWeight,",%0.5f",LSQEstimates[haploId][i]);
+
+}
+
