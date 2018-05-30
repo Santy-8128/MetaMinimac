@@ -1,3 +1,6 @@
+THIS IS CURRENTLY BEING UPDATED. PLEASE DO NOT USE IT.
+
+
 # MetaMinimac
 
 MetaMinimac is a tool to merge GWAS data imputed against different reference panels (using minimac4)
