@@ -291,7 +291,7 @@ bool HaplotypeSet::LoadLooVariant(VcfRecordGenotype &ThisGenotype,int loonumRead
             char *pch1 = strtok_r((char *) temp.c_str(), "|", &end_str1);
             TypedGT[2*i][loonumReadRecords] = atof(pch1);
             pch1 = strtok_r(NULL, "\t", &end_str1);
-            TypedGT[2*i][loonumReadRecords] = atof(pch1);
+            TypedGT[2*i+1][loonumReadRecords] = atof(pch1);
         }
         else
         {
