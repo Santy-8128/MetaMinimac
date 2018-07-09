@@ -33,7 +33,7 @@ int main(int argc, char ** argv)
     static struct option loptions[] =
     {
             {"input",required_argument,NULL,'i'},
-            {"output",required_argument,NULL,'p'},
+            {"output",required_argument,NULL,'o'},
             {"format",required_argument,NULL,'f'},
             {"skipInfo",no_argument,NULL,'s'},
             {"nobgzip",no_argument,NULL,'n'},
@@ -48,7 +48,7 @@ int main(int argc, char ** argv)
     {
         switch (c) {
             case 'i': MyVariables.inputFiles = optarg; break;
-            case 'p': MyVariables.outfile = optarg; break;
+            case 'o': MyVariables.outfile = optarg; break;
             case 'f': MyVariables.formatString = optarg; break;
             case 'c': MyVariables.chunkLength = atoi(optarg); break;
             case 'n': MyVariables.nobgzip=true; break;
