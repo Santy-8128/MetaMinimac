@@ -61,6 +61,7 @@ class HaplotypeSet
 
         // Summary Variables
 		int         numHaplotypes,numSamples;
+		int         numActualHaps;
 		int         numMarkers;
         vector<string> individualName;
         vector<int> SampleNoHaplotypes;

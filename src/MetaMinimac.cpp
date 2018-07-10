@@ -332,10 +332,11 @@ void MetaMinimac::GetMetaImpEstimates(int Sample, ThisChunk &MyChunk)
 
     LogOddsModel ThisSampleAnalysis;
 
-    if((Sample+1)%200==0 || Sample==InputData[0].numHaplotypes-1)
-        cout<<" Finished Analyzing "<<Sample+1<<" haplotypes ..."<<endl;
-
     ThisSampleAnalysis.metaInitialize(Sample, InputData, this, MyChunk);
+
+    if((Sample+1)%200==0 || Sample==InputData[0].numHaplotypes-1)
+        cout<<" Finished Analyzing "<< Sample/2+1 <<" samples ..."<<endl;
+
     vector<double> init(NoInPrefix-1, 0.0);
     vector<double> MiniMizer = Simplex(ThisSampleAnalysis, init);
     logitTransform(MiniMizer, LSQEstimates[Sample]);

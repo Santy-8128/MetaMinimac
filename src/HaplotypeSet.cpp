@@ -70,7 +70,8 @@ bool HaplotypeSet::GetSampleInformation(string filename)
         }
     }
     inFile.close();
-    numHaplotypes=tempHapCount;
+    numHaplotypes=2*numSamples;
+    numActualHaps=tempHapCount;
 
     return true;
 
