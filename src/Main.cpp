@@ -44,7 +44,7 @@ int main(int argc, char ** argv)
             {NULL,0,NULL,0}
     };
 
-    while ((c = getopt_long(argc, argv, "i:p:f:c:snhld",loptions,NULL)) >= 0)
+    while ((c = getopt_long(argc, argv, "i:o:f:c:snhld",loptions,NULL)) >= 0)
     {
         switch (c) {
             case 'i': MyVariables.inputFiles = optarg; break;
