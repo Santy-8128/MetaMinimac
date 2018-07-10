@@ -8,29 +8,6 @@
 using namespace std;
 
 
-//class LeastSquareError
-//{
-//    private:
-//
-//        String Method;
-//        int NoMarkers;
-//        int NoStudies;
-//        int NoDimensions;
-//        int SampleID;
-//        vector<vector<double>* > LooDosage;
-//        vector<vector<int*> > FlankLength;
-//        vector<vector<double>* > RecomSum;
-//        vector<double> *ChipGT;
-//
-//
-//    public:
-//
-//        double initialize(int SampleId, vector<HaplotypeSet> &InputData,
-//                                    MetaMinimac *const ThisStudy,ThisChunk &MyChunk);
-//        double  operator()(vector<double> x);
-//};
-//
-//
 //class LeastSquareWithRecombination
 //{
 //    private:
@@ -183,90 +160,6 @@ void logitTransform(vector<double> &From,
 //
 //    if(checkSum>1.0001)
 //        abort();
-//}
-
-
-
-//void logTransform(vector<double> &From,vector<double> &To,int NoDimensions)
-//{
-//
-//    double p=1.0;
-//    for(int i=0; i < NoDimensions; i++)
-//    {
-//        double logit = 1.0/(1.0+exp(0.0-From[i]));
-//        To[i]=p*logit;
-//        p = p*(1.-logit);
-//    }
-//    To[NoDimensions]=p;
-//
-//}
-
-
-//double LeastSquareError::initialize(int SampleId, vector<HaplotypeSet> &InputData,
-//                                    MetaMinimac *const ThisStudy,ThisChunk &MyChunk)
-//{
-//
-//    NoStudies=InputData.size();
-//    NoDimensions=NoStudies-1;
-//    NoMarkers=MyChunk.NoGenoAllStudies;
-//    SampleID=SampleId;
-//
-//
-//
-//    LooDosage.resize(NoStudies);
-//    for(int i=0;i<NoStudies;i++)
-//    {
-//        LooDosage[i]=&(InputData[i].LooDosage[SampleID]);
-//    }
-//    ChipGT=&InputData[0].TypedGT[SampleID];
-//
-//}
-
-
-
-//double LeastSquareError::operator()(vector<double> x)
-//{
-//
-//    double sum=0.0;
-//    vector<double> tempVar(NoDimensions+1);
-//
-//    logTransform(x,tempVar,NoDimensions);
-//
-//
-//
-////
-////    for(int i=0; i < NoDimensions; ++i)
-////    {
-////        double logit = 1.0/(1.0+exp(0.0-x[i]));
-////        tempVar[i]=p*logit;
-////        cout<<tempVar[i]<<"\t";
-////        p = p*(1.-logit);
-////    }
-////    tempVar[NoDimensions]=p;
-////    cout<<tempVar[NoDimensions];
-//
-//    for(int i=0;i<NoMarkers;i++)
-//    {
-//        double temp=(*ChipGT)[i];
-//        for(int j=0;j<=NoDimensions;j++)
-//        {
-//
-//            temp-=(tempVar[j]*((*LooDosage[j])[i]));
-////              cout<<" THERAPY2 = "<<j<<"\t"<<tempVar[j]<<"\t"<<(*LooDosage[j])[i]<<endl;
-//
-//
-////        cout<<" D = "<<temp<<"\t";
-//
-//        }
-////        cout<<"s= "<<temp<<"\t";
-//
-//        temp=temp*temp;
-//
-//        sum+=temp;
-//
-//    }
-////  cout<<"\t= "<<sum<<"\n";
-//  return sum;
 //}
 
 
