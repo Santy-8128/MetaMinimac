@@ -184,7 +184,6 @@ void MetaMinimac::GetNumChunks()
     if (NoChunks == 0)
         NoChunks = 1;
 
-    return;
 }
 
 bool MetaMinimac::CreateChunks()
@@ -293,7 +292,7 @@ String MetaMinimac::PerformFinalAnalysis()
 
     Initialize();
 
-       for (int i = 0; i < NoChunks; i++) {
+    for (int i = 0; i < NoChunks; i++) {
         cout << "\n -------------------------------------------" << endl;
         cout << " Analyzing Chunk " << i + 1 << "/" << NoChunks << " [" << CommonTypedVariantList[0].chr << ":";
         cout << CommonTypedVariantList[ChunkList[i].StartWithWindowIndex].bp << "-";
@@ -538,7 +537,7 @@ void MetaMinimac::FindCurrentMinimumPosition()
         }
 
     }
-    else if (NoInPrefix==3)
+    else if (NoInPrefix>2)
     {
 
         CurrentFirstVariantBp=CurrentRecordFromStudy[0]->get1BasedPosition();
@@ -569,7 +568,6 @@ void MetaMinimac::FindCurrentMinimumPosition()
                 }
             }
         }
-        int h=0;
     }
 }
 
@@ -635,7 +633,6 @@ void MetaMinimac::PrintMetaImputedData()
             PrintHaploidDosage((CurrentMetaImputedDosage[2*Id]));
         else
             abort();
-        int h=0;
 
     }
 
@@ -834,7 +831,6 @@ void MetaMinimac::ReadCurrentDosageData()
         int index = StudiesHasVariant[i];
         InputData[index].LoadHapDoseVariant(CurrentRecordFromStudy[index]->getGenotypeInfo());
     }
-    int h=0;
 }
 
 void MetaMinimac::CreateMetaImputedData()
@@ -849,19 +845,6 @@ void MetaMinimac::CreateMetaImputedData()
 
 
     fill(CurrentMetaImputedDosage.begin(),CurrentMetaImputedDosage.end(),0.0);
-    if(NoStudiesHasVariant==1)
-    {
-        for(int i=0; i<NoStudiesHasVariant; i++)
-        {
-            int index=StudiesHasVariant[i];
-            for(int j=0; j<InputData[0].numHaplotypes; j++)
-            {
-                CurrentMetaImputedDosage[j]+=  LSQEstimates[j][index] * InputData[index].CurrentHapDosage[j];
-            }
-        }
-        return;
-    }
-
     fill(CurrentMetaImputedDosageSum.begin(),CurrentMetaImputedDosageSum.end(),1e-6);
     for(int i=0; i<NoStudiesHasVariant; i++)
     {
@@ -900,7 +883,6 @@ void MetaMinimac::AppendtoMainVcfFaster(int ChunkNo)
 
     ifprintf(vcfdosepartial,"%s",VcfPrintStringPointer);
     ifclose(vcfdosepartial);
-    int h=0;
 }
 
 
