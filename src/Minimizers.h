@@ -42,27 +42,26 @@ class LogOddsModel
 {
     private:
 
-        String Method;
+//        String Method;
         int NoMarkers;
         int NoStudies;
         int NoDimensions;
-        int NoParams;
+//        int NoParams;
         int SampleID;
-        vector<vector<double>* > LooDosage;
+//        vector<vector<double>* > LooDosage;
         vector<vector<double> > LooDosageVal;
         vector<double> ChipGTVal;
-        vector<vector<int*> > FlankLength;
-        vector<vector<double*> > FlankFrac;
-        vector<vector<double*> > FlankLogOddFrac;
+//        vector<vector<int*> > FlankLength;
+//        vector<vector<double*> > FlankFrac;
+//        vector<vector<double*> > FlankLogOddFrac;
 
-
-        vector<vector<double>* > RecomSum;
-        vector<double> *ChipGT;
+//        vector<vector<double>* > RecomSum;
+//        vector<double> *ChipGT;
 
 
     public:
 
-    double metaInitialize(int SampleId, vector<HaplotypeSet> &InputData,
+    void metaInitialize(int SampleId, vector<HaplotypeSet> &InputData,
                       MetaMinimac *const ThisStudy,ThisChunk &MyChunk);
 //    double initialize(int SampleId, vector<HaplotypeSet> &InputData,
 //                      MetaMinimac *const ThisStudy,ThisChunk &MyChunk);
@@ -256,12 +255,12 @@ void logitTransform(vector<double> &From,
 
 
 
-double LogOddsModel::metaInitialize(int SampleId, vector<HaplotypeSet> &InputData,
+void LogOddsModel::metaInitialize(int SampleId, vector<HaplotypeSet> &InputData,
                                 MetaMinimac *const ThisStudy,ThisChunk &MyChunk)
 {
 
     NoStudies=InputData.size();
-    NoParams=NoStudies;
+//    NoParams=NoStudies;
     NoDimensions=NoStudies;
 
     NoMarkers=MyChunk.NoGenoAllStudies;

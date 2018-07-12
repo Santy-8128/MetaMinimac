@@ -126,7 +126,7 @@ bool MetaMinimac::ReadEmpVariantAndChunk()
         cout<<" -- Study "<<i+1<<" #Genotyped Sites = "<<InputData[i].noTypedMarkers<<endl;
     }
     FindCommonGenotypedVariants();
-    cout<<" Summary: Found "<< InputData[0].numSamples<<" samples across "<<NoInPrefix<<" studies on "<< NoCommonGenoVariants<<" common genotyped sites !" <<endl;
+    cout<<" Summary: Found "<< InputData[0].numSamples<<" samples (" << InputData[0].numActualHaps << " haplotypes) across "<<NoInPrefix<<" studies on "<< NoCommonGenoVariants<<" common genotyped sites !" <<endl;
 
     GetNumChunks();
     CreateChunks();
@@ -134,7 +134,7 @@ bool MetaMinimac::ReadEmpVariantAndChunk()
     return true;
 }
 
-bool MetaMinimac::FindCommonGenotypedVariants()
+void MetaMinimac::FindCommonGenotypedVariants()
 {
     std::map<string, int > HashUnionVariantMap;
     std::unordered_set<string> CommonGenotypeVariantNameList;
@@ -473,16 +473,19 @@ bool MetaMinimac::doesExistFile(String filename)
 
 string MetaMinimac::GetDosageFileFullName(String prefix)
 {
+    String filename;
     if(doesExistFile(prefix+".dose.vcf"))
-        return (string)prefix+".dose.vcf";
+        filename = prefix+".dose.vcf";
     else if(doesExistFile(prefix+".dose.vcf.gz"))
-        return (string)prefix+".dose.vcf.gz";
+        filename = prefix+".dose.vcf.gz";
+    string FileFullName(filename.c_str());
+    return FileFullName;
 }
 
-void MetaMinimac::PrintVariant(VcfRecord *temp)
-{
-    cout<<temp->get1BasedPosition()<<":"<<temp->getRefStr()<<"_"<<temp->getAltStr()<<endl;
-}
+//void MetaMinimac::PrintVariant(VcfRecord *temp)
+//{
+//    cout<<temp->get1BasedPosition()<<":"<<temp->getRefStr()<<"_"<<temp->getAltStr()<<endl;
+//}
 
 void MetaMinimac::UpdateCurrentRecords()
 {
