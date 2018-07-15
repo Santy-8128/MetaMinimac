@@ -87,9 +87,9 @@ class HaplotypeSet
     void        ReadBasedOnSortCommonGenotypeList       (vector<string> &SortedCommonGenoList);
     void        SortCommonGenotypeList                  (std::unordered_set<string> &CommonGenotypeVariantNameList, vector<string> &SortedCommonGenoList, vector<variant> &CommonTypedVariantList);
     bool        CheckSuffixFile                         (string prefix, const char* suffix, string &FinalName);
-    bool        LoadHapDoseVariant                      (VcfRecordGenotype &ThisGenotype);
+    void        LoadHapDoseVariant                      (VcfRecordGenotype &ThisGenotype);
     bool        GetSampleInformation                    (string filename);
-    bool        LoadLooVariant                          (VcfRecordGenotype &ThisGenotype,int loonumReadRecords);
+    void        LoadLooVariant                          (VcfRecordGenotype &ThisGenotype,int loonumReadRecords);
     bool        LoadSampleNames                         (string prefix);
     bool        doesExistFile                           (string filename);
  };

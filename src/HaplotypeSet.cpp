@@ -250,7 +250,7 @@ void HaplotypeSet::ReadBasedOnSortCommonGenotypeList(vector<string> &SortedCommo
     inFile.close();
 }
 
-bool HaplotypeSet::LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype)
+void HaplotypeSet::LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype)
 {
     for (int i = 0; i<(numSamples); i++)
     {
@@ -272,9 +272,8 @@ bool HaplotypeSet::LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype)
     }
 }
 
-bool HaplotypeSet::LoadLooVariant(VcfRecordGenotype &ThisGenotype,int loonumReadRecords)
+void HaplotypeSet::LoadLooVariant(VcfRecordGenotype &ThisGenotype,int loonumReadRecords)
 {
-    int looCounter=0;
     for (int i = 0; i<(numSamples); i++)
     {
         string temp=*ThisGenotype.getString("LDS",i);
