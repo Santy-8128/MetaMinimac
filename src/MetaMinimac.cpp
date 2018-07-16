@@ -871,7 +871,7 @@ void MetaMinimac::AppendtoMainVcfFaster(int ChunkNo)
     do
     {
         FindCurrentMinimumPosition();
-        if(CurrentFirstVariantBp>ChunkList[ChunkNo].EndBp)
+        if(CurrentFirstVariantBp>ChunkList[ChunkNo].EndBp || CommonTypedVariantListCounter == NoCommonGenoVariants)
             break;
         ReadCurrentDosageData();
         CreateMetaImputedData();
