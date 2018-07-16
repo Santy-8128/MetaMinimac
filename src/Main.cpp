@@ -121,7 +121,7 @@ void MetaMinimacVersion()
 	printf("\n\n -------------------------------------------------- \n");
 	printf("                   MetaMinimac     \n");
 	printf(" --------------------------------------------------\n");
-    printf(" (c) 2018 - Sayantan Das \n");
+    printf(" (c) 2018 - Sayantan Das, Ketian Yu, Goncalo Abecasis \n");
 	cout<< " Version : " << VERSION<< ";\n Built   : " << DATE << " by " << USER << std::endl;
 }
 
