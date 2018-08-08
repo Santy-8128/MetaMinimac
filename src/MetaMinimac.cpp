@@ -600,10 +600,13 @@ string MetaMinimac::CreateInfo()
 
 
     VcfRecord* tempRecord = CurrentRecordFromStudy[StudiesHasVariant[0]];
-    if(tempRecord->getIDStr()==CommonTypedVariantList[CommonTypedVariantListCounter].name)
+    if(CommonTypedVariantListCounter < NoCommonGenoVariants)
     {
-        ss<<";TRAINING";
-        CommonTypedVariantListCounter++;
+        if(tempRecord->getIDStr()==CommonTypedVariantList[CommonTypedVariantListCounter].name)
+        {
+            ss<<";TRAINING";
+            CommonTypedVariantListCounter++;
+        }
     }
     return ss.str();
 }
@@ -871,7 +874,7 @@ void MetaMinimac::AppendtoMainVcfFaster(int ChunkNo)
     do
     {
         FindCurrentMinimumPosition();
-        if(CurrentFirstVariantBp>ChunkList[ChunkNo].EndBp || CommonTypedVariantListCounter == NoCommonGenoVariants)
+        if(CurrentFirstVariantBp>ChunkList[ChunkNo].EndBp)
             break;
         ReadCurrentDosageData();
         CreateMetaImputedData();
