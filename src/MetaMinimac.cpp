@@ -126,7 +126,7 @@ bool MetaMinimac::ReadEmpVariantAndChunk()
         cout<<" -- Study "<<i+1<<" #Genotyped Sites = "<<InputData[i].noTypedMarkers<<endl;
     }
     FindCommonGenotypedVariants();
-    cout<<" Summary: Found "<< InputData[0].numSamples<<" samples (" << InputData[0].numActualHaps << " haplotypes) across "<<NoInPrefix<<" studies on "<< NoCommonGenoVariants<<" common genotyped sites !" <<endl;
+    cout<<" Summary: Found "<< InputData[0].numSamples<<" samples across "<<NoInPrefix<<" studies on "<< NoCommonGenoVariants<<" common genotyped sites !" <<endl;
 
     GetNumChunks();
     CreateChunks();
@@ -184,6 +184,7 @@ void MetaMinimac::GetNumChunks()
     if (NoChunks == 0)
         NoChunks = 1;
 
+    return;
 }
 
 bool MetaMinimac::CreateChunks()
@@ -274,11 +275,11 @@ void MetaMinimac::Initialize()
         LSQEstimates[j].resize(NoInPrefix);
     }
 
-    if(ThisVariable.debug)
-    {
-        ErrorPerSamplePerChunk.resize(InputData[0].numHaplotypes);
-        ErrorPerSample.resize(InputData[0].numHaplotypes, 0.0);
-    }
+  if(ThisVariable.debug)
+  {
+      ErrorPerSamplePerChunk.resize(InputData[0].numHaplotypes);
+      ErrorPerSample.resize(InputData[0].numHaplotypes, 0.0);
+  }
 
 }
 
@@ -292,7 +293,7 @@ String MetaMinimac::PerformFinalAnalysis()
 
     Initialize();
 
-    for (int i = 0; i < NoChunks; i++) {
+       for (int i = 0; i < NoChunks; i++) {
         cout << "\n -------------------------------------------" << endl;
         cout << " Analyzing Chunk " << i + 1 << "/" << NoChunks << " [" << CommonTypedVariantList[0].chr << ":";
         cout << CommonTypedVariantList[ChunkList[i].StartWithWindowIndex].bp << "-";
@@ -310,10 +311,10 @@ String MetaMinimac::PerformFinalAnalysis()
                 GetMetaImpEstimates(2 * j, ChunkList[i]);
         }
 
-        AppendtoMainVcfFaster(i);
+       AppendtoMainVcfFaster(i);
 
-        if(ThisVariable.debug)
-            AppendtoMainWeightsFile(i);
+       if(ThisVariable.debug)
+           AppendtoMainWeightsFile(i);
 
     }
 
@@ -331,8 +332,10 @@ void MetaMinimac::GetMetaImpEstimates(int Sample, ThisChunk &MyChunk)
 
     LogOddsModel ThisSampleAnalysis;
 
-    ThisSampleAnalysis.metaInitialize(Sample, InputData, this, MyChunk);
+    if((Sample+1)%200==0 || Sample==InputData[0].numHaplotypes-1)
+        cout<<" Finished Analyzing "<<Sample+1<<" haplotypes ..."<<endl;
 
+    ThisSampleAnalysis.metaInitialize(Sample, InputData, this, MyChunk);
     vector<double> init(NoInPrefix-1, 0.0);
     vector<double> MiniMizer = Simplex(ThisSampleAnalysis, init);
     logitTransform(MiniMizer, LSQEstimates[Sample]);
@@ -343,9 +346,6 @@ void MetaMinimac::GetMetaImpEstimates(int Sample, ThisChunk &MyChunk)
         ErrorPerSample[Sample]+=ErrorPerSamplePerChunk[Sample];
         ErrorSumSqPerChunk+=ErrorPerSamplePerChunk[Sample];
     }
-
-    if((Sample+1)%200==0 || Sample==InputData[0].numHaplotypes-1)
-        cout<<" Finished Analyzing "<< Sample/2+1 <<" samples ..."<<endl;
 }
 
 void MetaMinimac::OpenStreamInputDosageFiles()
@@ -472,30 +472,29 @@ bool MetaMinimac::doesExistFile(String filename)
 
 string MetaMinimac::GetDosageFileFullName(String prefix)
 {
-    String filename;
     if(doesExistFile(prefix+".dose.vcf"))
-        filename = prefix+".dose.vcf";
+        return (string)prefix+".dose.vcf";
     else if(doesExistFile(prefix+".dose.vcf.gz"))
-        filename = prefix+".dose.vcf.gz";
-    string FileFullName(filename.c_str());
-    return FileFullName;
+        return (string)prefix+".dose.vcf.gz";
+    return "";
+
 }
 
-//void MetaMinimac::PrintVariant(VcfRecord *temp)
-//{
-//    cout<<temp->get1BasedPosition()<<":"<<temp->getRefStr()<<"_"<<temp->getAltStr()<<endl;
-//}
+void MetaMinimac::PrintVariant(VcfRecord *temp)
+{
+    cout<<temp->get1BasedPosition()<<":"<<temp->getRefStr()<<"_"<<temp->getAltStr()<<endl;
+}
 
 void MetaMinimac::UpdateCurrentRecords()
 {
-    // cout<<" UPDATE "<<endl;
+   // cout<<" UPDATE "<<endl;
     for(int i=0; i<NoStudiesHasVariant;i++)
     {
         int index = StudiesHasVariant[i];
-        //   PrintVariant(CurrentRecordFromStudy[index]);
+     //   PrintVariant(CurrentRecordFromStudy[index]);
         if(!InputDosageStream[index]->readRecord(*CurrentRecordFromStudy[index]))
             CurrentRecordFromStudy[index]->set1BasedPosition(999999999);
-        // PrintVariant(CurrentRecordFromStudy[index]);
+       // PrintVariant(CurrentRecordFromStudy[index]);
 
     }
 
@@ -537,7 +536,7 @@ void MetaMinimac::FindCurrentMinimumPosition()
         }
 
     }
-    else if (NoInPrefix>2)
+    else if (NoInPrefix==3)
     {
 
         CurrentFirstVariantBp=CurrentRecordFromStudy[0]->get1BasedPosition();
@@ -568,6 +567,7 @@ void MetaMinimac::FindCurrentMinimumPosition()
                 }
             }
         }
+        int h=0;
     }
 }
 
@@ -600,13 +600,10 @@ string MetaMinimac::CreateInfo()
 
 
     VcfRecord* tempRecord = CurrentRecordFromStudy[StudiesHasVariant[0]];
-    if(CommonTypedVariantListCounter < NoCommonGenoVariants)
+    if(tempRecord->getIDStr()==CommonTypedVariantList[CommonTypedVariantListCounter].name)
     {
-        if(tempRecord->getIDStr()==CommonTypedVariantList[CommonTypedVariantListCounter].name)
-        {
-            ss<<";TRAINING";
-            CommonTypedVariantListCounter++;
-        }
+        ss<<";TRAINING";
+        CommonTypedVariantListCounter++;
     }
     return ss.str();
 }
@@ -636,6 +633,7 @@ void MetaMinimac::PrintMetaImputedData()
             PrintHaploidDosage((CurrentMetaImputedDosage[2*Id]));
         else
             abort();
+        int h=0;
 
     }
 
@@ -834,6 +832,7 @@ void MetaMinimac::ReadCurrentDosageData()
         int index = StudiesHasVariant[i];
         InputData[index].LoadHapDoseVariant(CurrentRecordFromStudy[index]->getGenotypeInfo());
     }
+    int h=0;
 }
 
 void MetaMinimac::CreateMetaImputedData()
@@ -848,6 +847,19 @@ void MetaMinimac::CreateMetaImputedData()
 
 
     fill(CurrentMetaImputedDosage.begin(),CurrentMetaImputedDosage.end(),0.0);
+    if(NoStudiesHasVariant==1)
+    {
+        for(int i=0; i<NoStudiesHasVariant; i++)
+        {
+            int index=StudiesHasVariant[i];
+            for(int j=0; j<InputData[0].numHaplotypes; j++)
+            {
+                CurrentMetaImputedDosage[j]+=  LSQEstimates[j][index] * InputData[index].CurrentHapDosage[j];
+            }
+        }
+        return;
+    }
+
     fill(CurrentMetaImputedDosageSum.begin(),CurrentMetaImputedDosageSum.end(),1e-6);
     for(int i=0; i<NoStudiesHasVariant; i++)
     {
@@ -886,6 +898,7 @@ void MetaMinimac::AppendtoMainVcfFaster(int ChunkNo)
 
     ifprintf(vcfdosepartial,"%s",VcfPrintStringPointer);
     ifclose(vcfdosepartial);
+    int h=0;
 }
 
 
