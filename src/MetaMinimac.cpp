@@ -274,11 +274,11 @@ void MetaMinimac::Initialize()
         LSQEstimates[j].resize(NoInPrefix);
     }
 
-  if(ThisVariable.debug)
-  {
-      ErrorPerSamplePerChunk.resize(InputData[0].numHaplotypes);
-      ErrorPerSample.resize(InputData[0].numHaplotypes, 0.0);
-  }
+    if(ThisVariable.debug)
+    {
+        ErrorPerSamplePerChunk.resize(InputData[0].numHaplotypes);
+        ErrorPerSample.resize(InputData[0].numHaplotypes, 0.0);
+    }
 
 }
 
@@ -310,10 +310,10 @@ String MetaMinimac::PerformFinalAnalysis()
                 GetMetaImpEstimates(2 * j, ChunkList[i]);
         }
 
-       AppendtoMainVcfFaster(i);
+        AppendtoMainVcfFaster(i);
 
-       if(ThisVariable.debug)
-           AppendtoMainWeightsFile(i);
+        if(ThisVariable.debug)
+            AppendtoMainWeightsFile(i);
 
     }
 
@@ -488,14 +488,14 @@ string MetaMinimac::GetDosageFileFullName(String prefix)
 
 void MetaMinimac::UpdateCurrentRecords()
 {
-   // cout<<" UPDATE "<<endl;
+    // cout<<" UPDATE "<<endl;
     for(int i=0; i<NoStudiesHasVariant;i++)
     {
         int index = StudiesHasVariant[i];
-     //   PrintVariant(CurrentRecordFromStudy[index]);
+        //   PrintVariant(CurrentRecordFromStudy[index]);
         if(!InputDosageStream[index]->readRecord(*CurrentRecordFromStudy[index]))
             CurrentRecordFromStudy[index]->set1BasedPosition(999999999);
-       // PrintVariant(CurrentRecordFromStudy[index]);
+        // PrintVariant(CurrentRecordFromStudy[index]);
 
     }
 

@@ -40,17 +40,17 @@ using namespace std;
 
 class LogOddsModel
 {
-    private:
+private:
 
 //        String Method;
-        int NoMarkers;
-        int NoStudies;
-        int NoDimensions;
+    int NoMarkers;
+    int NoStudies;
+    int NoDimensions;
 //        int NoParams;
-        int SampleID;
+    int SampleID;
 //        vector<vector<double>* > LooDosage;
-        vector<vector<double> > LooDosageVal;
-        vector<double> ChipGTVal;
+    vector<vector<double> > LooDosageVal;
+    vector<double> ChipGTVal;
 //        vector<vector<int*> > FlankLength;
 //        vector<vector<double*> > FlankFrac;
 //        vector<vector<double*> > FlankLogOddFrac;
@@ -59,10 +59,10 @@ class LogOddsModel
 //        vector<double> *ChipGT;
 
 
-    public:
+public:
 
     void metaInitialize(int SampleId, vector<HaplotypeSet> &InputData,
-                      MetaMinimac *const ThisStudy,ThisChunk &MyChunk);
+                        MetaMinimac *const ThisStudy,ThisChunk &MyChunk);
 //    double initialize(int SampleId, vector<HaplotypeSet> &InputData,
 //                      MetaMinimac *const ThisStudy,ThisChunk &MyChunk);
     double  operator()(vector<double> x);
@@ -256,7 +256,7 @@ void logitTransform(vector<double> &From,
 
 
 void LogOddsModel::metaInitialize(int SampleId, vector<HaplotypeSet> &InputData,
-                                MetaMinimac *const ThisStudy,ThisChunk &MyChunk)
+                                  MetaMinimac *const ThisStudy,ThisChunk &MyChunk)
 {
 
     NoStudies=InputData.size();

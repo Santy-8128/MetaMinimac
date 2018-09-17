@@ -36,15 +36,15 @@ public:
 class ThisChunk
 {
 
-	public:
-        int ChunkNo;
-	    int NoVariants;
-        int StartBp,EndBp;
-	    int StartWithWindowIndex,EndWithWindowIndex;
-        int NoGenoAllStudies;
-        vector< vector<int> > ThisChunkInterAllTypedSitesReverseMap;
+public:
+    int ChunkNo;
+    int NoVariants;
+    int StartBp,EndBp;
+    int StartWithWindowIndex,EndWithWindowIndex;
+    int NoGenoAllStudies;
+    vector< vector<int> > ThisChunkInterAllTypedSitesReverseMap;
 
-        ThisChunk(){};
+    ThisChunk(){};
 };
 
 
@@ -52,32 +52,32 @@ class HaplotypeSet
 {
 
 
-	public:
+public:
 
-        // File Name Variables
-        String InfilePrefix;
-        string DoseFileName;
-        string EmpDoseFileName;
+    // File Name Variables
+    String InfilePrefix;
+    string DoseFileName;
+    string EmpDoseFileName;
 
-        // Summary Variables
-		int         numHaplotypes,numSamples;
-		int         numActualHaps;
-		int         numMarkers;
-        vector<string> individualName;
-        vector<int> SampleNoHaplotypes;
-        vector<int> CummulativeSampleNoHaplotypes;
-        vector<variant> VariantList;
-        vector<variant> TypedVariantList;
-        int noTypedMarkers;
-        string finChromosome;
+    // Summary Variables
+    int         numHaplotypes,numSamples;
+    int         numActualHaps;
+    int         numMarkers;
+    vector<string> individualName;
+    vector<int> SampleNoHaplotypes;
+    vector<int> CummulativeSampleNoHaplotypes;
+    vector<variant> VariantList;
+    vector<variant> TypedVariantList;
+    int noTypedMarkers;
+    string finChromosome;
 
 
-        // Dosage Data
-        vector<float> CurrentHapDosage;
-        vector<vector<double> > LooDosage;
-        vector<vector<double> > TypedGT;
-        vector<vector<int> > FlankLength;
-        vector<vector<double> > FlankFrac;
+    // Dosage Data
+    vector<float> CurrentHapDosage;
+    vector<vector<double> > LooDosage;
+    vector<vector<double> > TypedGT;
+    vector<vector<int> > FlankLength;
+    vector<vector<double> > FlankFrac;
 
 
     // FUNCTIONS
@@ -88,11 +88,16 @@ class HaplotypeSet
     void        SortCommonGenotypeList                  (std::unordered_set<string> &CommonGenotypeVariantNameList, vector<string> &SortedCommonGenoList, vector<variant> &CommonTypedVariantList);
     bool        CheckSuffixFile                         (string prefix, const char* suffix, string &FinalName);
     void        LoadHapDoseVariant                      (VcfRecordGenotype &ThisGenotype);
+
+
+
+
+    bool        GetSampleInformationfromHDS                    (string filename);
     bool        GetSampleInformation                    (string filename);
     void        LoadLooVariant                          (VcfRecordGenotype &ThisGenotype,int loonumReadRecords);
     bool        LoadSampleNames                         (string prefix);
     bool        doesExistFile                           (string filename);
- };
+};
 
 
 
