@@ -94,7 +94,7 @@ class MetaMinimac
     void        ReadCurrentDosageData           ();
     void        PrintHaploidDosage              (float &x);
     void        PrintDiploidDosage              (float &x, float &y);
-//    void        PrintVariant                    (VcfRecord *temp);
+    void        PrintVariant                    (VcfRecord *temp);
     void        AppendtoMainVcfFaster           (int ChunkNo);
     void        AppendtoMainWeightsFile           (int ChunkNo);
     void        UpdateCurrentRecords            ();
