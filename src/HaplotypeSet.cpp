@@ -10,7 +10,7 @@ bool HaplotypeSet::LoadSampleNames(string prefix)
     if(!CheckSuffixFile(prefix,"dose", DoseFileName)) return false;
     if(!CheckSuffixFile(prefix,"empiricalDose", EmpDoseFileName)) return false;
 
-    GetSampleInformation(DoseFileName);
+    GetSampleInformationfromHDS(DoseFileName);
     int tempNoSamples=numSamples;
     vector<string> tempindividualName=individualName;
     vector<int> tempSampleNoHaplotypes=SampleNoHaplotypes;
@@ -20,6 +20,79 @@ bool HaplotypeSet::LoadSampleNames(string prefix)
     return true;
 
 }
+
+
+bool HaplotypeSet::GetSampleInformationfromHDS(string filename)
+{
+    VcfFileReader inFile;
+    VcfHeader header;
+    VcfRecord record;
+    individualName.clear();
+
+    if (!inFile.open(filename.c_str(), header))
+    {
+        cout << "\n Program could NOT open file : " << filename << endl<<endl;
+        return false;
+    }
+    numSamples = header.getNumSamples();
+    if(numSamples==0)
+    {
+        std::cout << "\n Number of Samples read from VCF File    : " << numSamples << endl;
+        std::cout << "\n ERROR !!! "<<endl;
+        cout << "\n NO samples found in VCF File !! \n Please Check Input File !!!  "<< endl;
+        return false;
+    }
+    individualName.resize(numSamples);
+    CummulativeSampleNoHaplotypes.resize(numSamples);
+    SampleNoHaplotypes.resize(numSamples);
+
+    for (int i = 0; i < numSamples; i++)
+    {
+        individualName[i]=header.getSampleName(i);
+    }
+
+    inFile.setSiteOnly(false);
+    inFile.readRecord(record);
+
+
+    VcfRecordGenotype &ThisGenotype=record.getGenotypeInfo();
+
+    int tempHapCount=0;
+    for (int i = 0; i<(numSamples); i++)
+    {
+        string temp=*ThisGenotype.getString("HDS",i);
+        char *end_str;
+
+        char *pch = strtok_r((char *) temp.c_str(), ",", &end_str);
+        if(pch==NULL)
+        {
+            std::cout << "\n ERROR !!! \n Empty Value for Individual : " << individualName[i] << " at First Marker  " << endl;
+            std::cout << " Most probably a corrupted VCF file. Please check input VCF file !!! " << endl;
+            cout << "\n Program Exiting ... \n\n";
+            return false;
+        }
+        char *pch1 = strtok_r(NULL, "\t", &end_str);
+
+        if(pch1==NULL)
+        {
+            SampleNoHaplotypes[i]=1;
+        }
+        else
+        {
+            SampleNoHaplotypes[i]=2;
+        }
+
+        CummulativeSampleNoHaplotypes[i]=tempHapCount;
+        tempHapCount+=SampleNoHaplotypes[i];
+    }
+
+    inFile.close();
+    numHaplotypes=tempHapCount;
+
+    return true;
+
+}
+
 
 bool HaplotypeSet::GetSampleInformation(string filename)
 {
@@ -249,7 +322,7 @@ void HaplotypeSet::ReadBasedOnSortCommonGenotypeList(vector<string> &SortedCommo
     inFile.close();
 }
 
-bool HaplotypeSet::LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype)
+void HaplotypeSet::LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype)
 {
     for (int i = 0; i<(numSamples); i++)
     {
@@ -271,7 +344,7 @@ bool HaplotypeSet::LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype)
     }
 }
 
-bool HaplotypeSet::LoadLooVariant(VcfRecordGenotype &ThisGenotype,int loonumReadRecords)
+void HaplotypeSet::LoadLooVariant(VcfRecordGenotype &ThisGenotype,int loonumReadRecords)
 {
     int looCounter=0;
     for (int i = 0; i<(numSamples); i++)
