@@ -143,7 +143,8 @@ bool HaplotypeSet::GetSampleInformation(string filename)
         }
     }
     inFile.close();
-    numHaplotypes=tempHapCount;
+    numHaplotypes=2*numSamples;
+    numActualHaps=tempHapCount;
 
     return true;
 
@@ -346,7 +347,6 @@ void HaplotypeSet::LoadHapDoseVariant(VcfRecordGenotype &ThisGenotype)
 
 void HaplotypeSet::LoadLooVariant(VcfRecordGenotype &ThisGenotype,int loonumReadRecords)
 {
-    int looCounter=0;
     for (int i = 0; i<(numSamples); i++)
     {
         string temp=*ThisGenotype.getString("LDS",i);

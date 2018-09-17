@@ -33,7 +33,7 @@ int main(int argc, char ** argv)
     static struct option loptions[] =
     {
             {"input",required_argument,NULL,'i'},
-            {"output",required_argument,NULL,'p'},
+            {"output",required_argument,NULL,'o'},
             {"format",required_argument,NULL,'f'},
             {"skipInfo",no_argument,NULL,'s'},
             {"nobgzip",no_argument,NULL,'n'},
@@ -44,11 +44,11 @@ int main(int argc, char ** argv)
             {NULL,0,NULL,0}
     };
 
-    while ((c = getopt_long(argc, argv, "i:p:f:c:snhld",loptions,NULL)) >= 0)
+    while ((c = getopt_long(argc, argv, "i:o:f:c:snhld",loptions,NULL)) >= 0)
     {
         switch (c) {
             case 'i': MyVariables.inputFiles = optarg; break;
-            case 'p': MyVariables.outfile = optarg; break;
+            case 'o': MyVariables.outfile = optarg; break;
             case 'f': MyVariables.formatString = optarg; break;
             case 'c': MyVariables.chunkLength = atoi(optarg); break;
             case 'n': MyVariables.nobgzip=true; break;
@@ -121,7 +121,7 @@ void MetaMinimacVersion()
 	printf("\n\n -------------------------------------------------- \n");
 	printf("                   MetaMinimac     \n");
 	printf(" --------------------------------------------------\n");
-    printf(" (c) 2018 - Sayantan Das \n");
+    printf(" (c) 2018 - Sayantan Das, Ketian Yu, Goncalo Abecasis \n");
 	cout<< " Version : " << VERSION<< ";\n Built   : " << DATE << " by " << USER << std::endl;
 }
 

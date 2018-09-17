@@ -77,7 +77,7 @@ class MetaMinimac
     bool        ParseInputVCFFiles              ();
     bool        CheckSampleNameCompatibility    ();
     bool        ReadEmpVariantAndChunk          ();
-    bool        FindCommonGenotypedVariants     ();
+    void        FindCommonGenotypedVariants     ();
     bool        CreateChunks                    ();
     void        GetNumChunks                    ();
     void        PrintChunkInformation           ();
@@ -94,7 +94,7 @@ class MetaMinimac
     void        ReadCurrentDosageData           ();
     void        PrintHaploidDosage              (float &x);
     void        PrintDiploidDosage              (float &x, float &y);
-    void        PrintVariant                    (VcfRecord *temp);
+//    void        PrintVariant                    (VcfRecord *temp);
     void        AppendtoMainVcfFaster           (int ChunkNo);
     void        AppendtoMainWeightsFile           (int ChunkNo);
     void        UpdateCurrentRecords            ();
