@@ -600,7 +600,7 @@ string MetaMinimac::CreateInfo()
 
 
     VcfRecord* tempRecord = CurrentRecordFromStudy[StudiesHasVariant[0]];
-    if(tempRecord->getIDStr()==CommonTypedVariantList[CommonTypedVariantListCounter].name)
+    if(CommonTypedVariantListCounter < NoCommonGenoVariants && tempRecord->getIDStr()==CommonTypedVariantList[CommonTypedVariantListCounter].name)
     {
         ss<<";TRAINING";
         CommonTypedVariantListCounter++;
