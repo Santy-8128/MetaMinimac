@@ -112,6 +112,7 @@ bool MetaMinimac::CheckSampleNameCompatibility()
                 return false;
 
     }
+    CountActualHaps = InputData[0].numActualHaps;
 
     cout<<" -- Successful !!! "<<endl;
     return true;
@@ -574,18 +575,19 @@ void MetaMinimac::FindCurrentMinimumPosition()
 string MetaMinimac::CreateInfo()
 {
     stringstream ss;
-    double freq=0.0;
-    for(int i=0;i<InputData[0].numSamples;i++)
-    {
-        if(InputData[0].SampleNoHaplotypes[i]==2)
-        {
-            freq+=(CurrentMetaImputedDosage[2*i]+CurrentMetaImputedDosage[2*i+1]);
-        }
-    }
-    freq/=InputData[0].numHaplotypes;
-    double maf=freq > 0.5 ? 1.0 - freq : freq;
-    ss<<"AF="<< fixed << setprecision(5) <<freq<<";MAF=";
-    ss<<fixed << setprecision(5) << maf;
+//    double freq=0.0;
+//    for(int i=0;i<InputData[0].numSamples;i++)
+//    {
+//        if(InputData[0].SampleNoHaplotypes[i]==2)
+//        {
+//            freq+=(CurrentMetaImputedDosage[2*i]+CurrentMetaImputedDosage[2*i+1]);
+//        }
+//    }
+//    freq/=InputData[0].numHaplotypes;
+    double maf=CurrentAlleleFreq > 0.5 ? 1.0 - CurrentAlleleFreq : CurrentAlleleFreq;
+    ss<<"AF="<< fixed << setprecision(5) << CurrentAlleleFreq <<";MAF=";
+    ss<<fixed << setprecision(5) << maf <<";R2=";
+    ss<<fixed << setprecision(5) << CurrentRsq ;
     ss<<";";
 
     if(!ThisVariable.infoDetails)
@@ -847,19 +849,6 @@ void MetaMinimac::CreateMetaImputedData()
 
 
     fill(CurrentMetaImputedDosage.begin(),CurrentMetaImputedDosage.end(),0.0);
-    if(NoStudiesHasVariant==1)
-    {
-        for(int i=0; i<NoStudiesHasVariant; i++)
-        {
-            int index=StudiesHasVariant[i];
-            for(int j=0; j<InputData[0].numHaplotypes; j++)
-            {
-                CurrentMetaImputedDosage[j]+=  LSQEstimates[j][index] * InputData[index].CurrentHapDosage[j];
-            }
-        }
-        return;
-    }
-
     fill(CurrentMetaImputedDosageSum.begin(),CurrentMetaImputedDosageSum.end(),1e-6);
     for(int i=0; i<NoStudiesHasVariant; i++)
     {
@@ -877,6 +866,32 @@ void MetaMinimac::CreateMetaImputedData()
 
 }
 
+void MetaMinimac::CalculateCurrentRsq()
+{
+    CurrentHapDosageSum = 0;
+    CurrentHapDosageSumSq = 0;
+    for(int j=0; j<InputData[0].numHaplotypes; j++)
+    {
+        float &HapDosage = CurrentMetaImputedDosage[j];
+        CurrentHapDosageSum += HapDosage;
+        CurrentHapDosageSumSq += HapDosage * HapDosage;
+    }
+    CurrentAlleleFreq = CurrentHapDosageSum/CountActualHaps;
+
+    if(CountActualHaps < 2)
+    {
+        CurrentRsq = 0;
+        return;
+    }
+
+    double evar = CurrentAlleleFreq * (1.0 - CurrentAlleleFreq);
+    double ovar = 0.0;
+
+    if((CurrentHapDosageSumSq - CurrentHapDosageSum * CurrentHapDosageSum / CountActualHaps)>0)
+        ovar=(CurrentHapDosageSumSq - CurrentHapDosageSum * CurrentHapDosageSum / CountActualHaps) / CountActualHaps;
+    CurrentRsq = ovar / (evar + 1e-30);
+}
+
 void MetaMinimac::AppendtoMainVcfFaster(int ChunkNo)
 {
     VcfPrintStringPointerLength=0;
@@ -890,6 +905,7 @@ void MetaMinimac::AppendtoMainVcfFaster(int ChunkNo)
             break;
         ReadCurrentDosageData();
         CreateMetaImputedData();
+        CalculateCurrentRsq();
         PrintCurrentVariant();
         PrintMetaImputedData();
         UpdateCurrentRecords();

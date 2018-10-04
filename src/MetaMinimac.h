@@ -69,6 +69,12 @@ class MetaMinimac
         vector<double> ErrorPerSample;
         double ErrorSumSq,ErrorSumSqPerChunk;
 
+        // Variables for Rsq
+        int CountActualHaps;
+        double CurrentHapDosageSum, CurrentHapDosageSumSq;
+        double CurrentAlleleFreq;
+        double CurrentRsq;
+
 
     // FUNCTIONS
 
@@ -101,6 +107,7 @@ class MetaMinimac
     void        Initialize                      ();
     void        FindCurrentMinimumPosition      ();
     void        PrintWeightForHaplotype         (int haploId);
+    void        CalculateCurrentRsq             ();
     string      CreateInfo                      ();
                 MetaMinimac                     (){}
 
